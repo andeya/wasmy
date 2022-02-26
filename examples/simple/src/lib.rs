@@ -14,9 +14,9 @@ fn main(ctx: Ctx, args: InArgs) -> Result<Any> {
     match args.get_method() {
         0 => {
             let args: test::TestArgs = args.get_args()?;
-            let sum: test::TestResult = ctx.call_host(0, &args)?;
-            println!("[Simple({})] call host add: args={{{:?}}}, sum={}", rid, args, sum.get_sum());
-            pack_any(sum)
+            let res: test::TestResult = ctx.call_host(0, &args)?;
+            println!("[Simple({})] call host method({}): args={{{:?}}}, result={}", rid, 0, args, res.get_c());
+            pack_any(res)
         }
         _ => { pack_empty() }
     }
