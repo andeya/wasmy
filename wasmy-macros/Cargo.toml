@@ -1,6 +1,6 @@
 [package]
 name = "wasmy-macros"
-version = "0.2.0"
+version = "0.2.2"
 edition = "2021"
 resolver = "2"
 authors = ["henrylee2cn <henrylee2cn@gmail.com>"]

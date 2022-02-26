@@ -93,9 +93,10 @@ mod test {
     // {
     //     fn add1(args : TestArgs) -> Result < TestResult >
     //     {
-    //         let mut res = TestResult :: new() ; res.set_sum(args.a + args.b) ;
+    //         let mut res = TestResult :: new() ; res.set_c(args.a + args.b) ;
     //         Ok(res)
-    //     } ; let args : TestArgs = HandlerAPI :: unpack_any(args) ? ;
-    //     add1(args).and_then(| res | HandlerAPI :: pack_any(& res))
+    //     } ;
+    //     add1(HandlerAPI :: unpack_any(args)
+    //     ?).and_then(| res | HandlerAPI :: pack_any(res))
     // } submit_handler! { HandlerAPI :: new(1i32, add1) }
 }

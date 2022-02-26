@@ -15,7 +15,7 @@ pub fn wasm_entry(_args: TokenStream, item: TokenStream) -> TokenStream {
     let expanded = quote! {
         #[no_mangle]
         pub extern "C" fn _wasm_main(ctx_id: i32, size: i32) {
-            wasmy_abi::wasm_main(ctx_id, size, #handler_ident)
+            ::wasmy_abi::wasm_main(ctx_id, size, #handler_ident)
         }
     };
     handler_block.extend(TokenStream::from(expanded));
@@ -44,8 +44,7 @@ pub fn vm_handler(args: TokenStream, item: TokenStream) -> TokenStream {
         #[allow(redundant_semicolons)]
         fn #handler_ident(args: &Any) -> Result<Any> {
             #inner;
-            let args: TestArgs = HandlerAPI::unpack_any(args)?;
-            #handler_ident(args).and_then(|res|HandlerAPI::pack_any(res))
+            #handler_ident(HandlerAPI::unpack_any(args)?).and_then(|res|HandlerAPI::pack_any(res))
         }
         submit_handler!{
            HandlerAPI::new(#method, #handler_ident)
