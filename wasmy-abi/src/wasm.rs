@@ -1,4 +1,3 @@
-use anyhow;
 pub use protobuf::{CodedOutputStream, Message, ProtobufEnum};
 pub use protobuf::well_known_types::Any;
 
