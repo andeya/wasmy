@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
+    "wasmy",
     "wasmy-abi",
     "wasmy-vm",
     "wasmy-macros",
