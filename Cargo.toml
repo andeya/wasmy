@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members = [
+    "wasmy-abi",
+    "wasmy-vm",
+    "wasmy-macros",
+]
+exclude = [
+    "examples/simple",
+    "examples/vm",
+]

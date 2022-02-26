@@ -1,0 +1,22 @@
+//! https://github.com/stepancheg/rust-protobuf
+//! protoc --rust_out . abi.proto
+
+syntax = "proto3";
+package abi;
+import "google/protobuf/any.proto";
+
+// InArgs arguments for interaction between the VM and WASM
+message InArgs {
+  int32 method = 1;
+  google.protobuf.Any data = 2;
+}
+
+// OutResult result for interaction between the VM and WASM
+message OutResult {
+  int32 code = 1;
+  string msg = 2;
+  google.protobuf.Any data = 3;
+}
+
+// Empty empty data
+message Empty {}

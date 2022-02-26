@@ -1,0 +1,14 @@
+//! https://github.com/stepancheg/rust-protobuf
+//! protoc --rust_out . abi.proto
+
+syntax = "proto3";
+package test;
+import "google/protobuf/any.proto";
+
+message TestArgs {
+  int32 a = 1;
+  int32 b = 2;
+}
+message TestResult {
+  int32 sum = 1;
+}

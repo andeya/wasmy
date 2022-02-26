@@ -1,0 +1,21 @@
+[package]
+name = "wasmy-macros"
+version = "0.2.0"
+edition = "2021"
+resolver = "2"
+authors = ["henrylee2cn <henrylee2cn@gmail.com>"]
+description = "macros of wasmy(easily customize my wasm app)"
+license = "Apache-2.0"
+repository = "https://github.com/henrylee2cn/wasmy"
+categories = ["wasm"]
+keywords = ["wasm", "webassembly"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "1.0", features = ["full"] }
+quote = "1.0"
+proc-macro2 = "1.0.7"
+
