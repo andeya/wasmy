@@ -56,7 +56,7 @@ impl Ctx {
     }
 }
 
-fn in_args<M: Message>(method: Method, data: &M) -> anyhow::Result<InArgs> {
+fn in_args<M: Message>(method: Method, data: &M) -> Result<InArgs> {
     let mut args = InArgs::new();
     args.set_data(Any::pack(data)?);
     args.set_method(method);
