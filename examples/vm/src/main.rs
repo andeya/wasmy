@@ -20,7 +20,7 @@ fn main() {
             data.set_a(2);
             data.set_b(5);
             let guest_result: TestResult = call_wasm(wasm_info, 0, data.clone()).unwrap();
-            println!("{}+{}={}", data.get_a(), data.get_b(), guest_result.get_sum())
+            println!("{}+{}={}", data.get_a(), data.get_b(), guest_result.get_c())
         }
     }
 }
@@ -28,6 +28,6 @@ fn main() {
 #[vm_handler(0)]
 fn add(args: TestArgs) -> Result<TestResult> {
     let mut res = TestResult::new();
-    res.set_sum(args.a + args.b);
+    res.set_c(args.a + args.b);
     Ok(res)
 }

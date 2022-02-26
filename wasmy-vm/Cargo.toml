@@ -1,6 +1,6 @@
 [package]
 name = "wasmy-vm"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 resolver = "2"
 authors = ["henrylee2cn <henrylee2cn@gmail.com>"]
@@ -12,7 +12,7 @@ keywords = ["wasm", "webassembly"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wasmy-abi = "0.2.0"
+wasmy-abi = "0.2.1"
 wasmy-macros = "0.2.0"
 inventory = "0.2.2"
 wasmer = "2.0.0"

@@ -4,9 +4,8 @@ use std::sync::RwLock;
 
 pub use inventory::submit as submit_handler;
 use lazy_static::lazy_static;
-pub use wasmy_macros::vm_handler;
-
 pub use wasmy_abi::*;
+pub use wasmy_macros::vm_handler;
 
 pub type Handler = fn(&Any) -> Result<Any>;
 
@@ -84,7 +83,7 @@ mod test {
         #[vm_handler(1)]
         fn add1(args: TestArgs) -> Result<TestResult> {
             let mut res = TestResult::new();
-            res.set_sum(args.a + args.b);
+            res.set_c(args.a + args.b);
             Ok(res)
         }
         HandlerAPI::collect_and_register_all()
