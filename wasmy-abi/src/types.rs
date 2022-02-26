@@ -75,6 +75,18 @@ impl From<anyhow::Error> for CodeMsg {
     }
 }
 
+impl From<CodeMsg> for anyhow::Error {
+    fn from(e: CodeMsg) -> Self {
+        anyhow::Error::msg(e)
+    }
+}
+
+impl From<std::io::Error> for CodeMsg {
+    fn from(e: std::io::Error) -> Self {
+        ERR_CODE_UNKNOWN.to_code_msg(format!("io: {}", e))
+    }
+}
+
 impl From<protobuf::ProtobufError> for CodeMsg {
     fn from(e: protobuf::ProtobufError) -> Self {
         ERR_CODE_PROTO.to_code_msg(format!("protobuf: {}", e))
