@@ -14,5 +14,5 @@ fn main() {
             ..Default::default()
         })
         .run()
-        .expect("protoc");
+        .unwrap_or_else(|e| eprintln!("wasmy-abi build.sh error: {}", e));
 }

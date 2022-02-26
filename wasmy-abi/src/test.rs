@@ -217,7 +217,7 @@ impl ::protobuf::reflect::ProtobufValue for TestArgs {
 #[cfg_attr(feature = "with-serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct TestResult {
     // message fields
-    pub sum: i32,
+    pub c: i32,
     // special fields
     #[cfg_attr(feature = "with-serde", serde(skip))]
     pub unknown_fields: ::protobuf::UnknownFields,
@@ -236,19 +236,19 @@ impl TestResult {
         ::std::default::Default::default()
     }
 
-    // int32 sum = 1;
+    // int32 c = 1;
 
 
-    pub fn get_sum(&self) -> i32 {
-        self.sum
+    pub fn get_c(&self) -> i32 {
+        self.c
     }
-    pub fn clear_sum(&mut self) {
-        self.sum = 0;
+    pub fn clear_c(&mut self) {
+        self.c = 0;
     }
 
     // Param is passed by value, moved
-    pub fn set_sum(&mut self, v: i32) {
-        self.sum = v;
+    pub fn set_c(&mut self, v: i32) {
+        self.c = v;
     }
 }
 
@@ -266,7 +266,7 @@ impl ::protobuf::Message for TestResult {
                         return ::std::result::Result::Err(::protobuf::rt::unexpected_wire_type(wire_type));
                     }
                     let tmp = is.read_int32()?;
-                    self.sum = tmp;
+                    self.c = tmp;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -280,8 +280,8 @@ impl ::protobuf::Message for TestResult {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
-        if self.sum != 0 {
-            my_size += ::protobuf::rt::value_size(1, self.sum, ::protobuf::wire_format::WireTypeVarint);
+        if self.c != 0 {
+            my_size += ::protobuf::rt::value_size(1, self.c, ::protobuf::wire_format::WireTypeVarint);
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
@@ -289,8 +289,8 @@ impl ::protobuf::Message for TestResult {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
-        if self.sum != 0 {
-            os.write_int32(1, self.sum)?;
+        if self.c != 0 {
+            os.write_int32(1, self.c)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -331,9 +331,9 @@ impl ::protobuf::Message for TestResult {
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
             fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeInt32>(
-                "sum",
-                |m: &TestResult| { &m.sum },
-                |m: &mut TestResult| { &mut m.sum },
+                "c",
+                |m: &TestResult| { &m.c },
+                |m: &mut TestResult| { &mut m.c },
             ));
             ::protobuf::reflect::MessageDescriptor::new_pb_name::<TestResult>(
                 "TestResult",
@@ -351,7 +351,7 @@ impl ::protobuf::Message for TestResult {
 
 impl ::protobuf::Clear for TestResult {
     fn clear(&mut self) {
-        self.sum = 0;
+        self.c = 0;
         self.unknown_fields.clear();
     }
 }
@@ -369,10 +369,9 @@ impl ::protobuf::reflect::ProtobufValue for TestResult {
 }
 
 static file_descriptor_proto_data: &'static [u8] = b"\
-    \n\ntest.proto\x12\x04test\x1a\x19google/protobuf/any.proto\"&\n\x08Test\
-    Args\x12\x0c\n\x01a\x18\x01\x20\x01(\x05R\x01a\x12\x0c\n\x01b\x18\x02\
-    \x20\x01(\x05R\x01b\"\x1e\n\nTestResult\x12\x10\n\x03sum\x18\x01\x20\x01\
-    (\x05R\x03sumb\x06proto3\
+    \n\ntest.proto\x12\x04test\"&\n\x08TestArgs\x12\x0c\n\x01a\x18\x01\x20\
+    \x01(\x05R\x01a\x12\x0c\n\x01b\x18\x02\x20\x01(\x05R\x01b\"\x1a\n\nTestR\
+    esult\x12\x0c\n\x01c\x18\x01\x20\x01(\x05R\x01cb\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;
