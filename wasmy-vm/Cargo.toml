@@ -12,6 +12,9 @@ keywords = ["wasm", "webassembly"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+wasmy-abi = "0.2.0"
+wasmy-macros = "0.2.0"
+inventory = "0.2.2"
 wasmer = "2.0.0"
 wasmer-engine-universal = "2.0.0"
 wasmer-wasi = "2.0.0"
@@ -22,8 +25,5 @@ structopt = { version = "0.3", features = ["color"] }
 anyhow = "1"
 protobuf = { version = "2", features = ["with-bytes"] }
 lazy_static = "1.4.0"
-wasmy-abi = { path = "../wasmy-abi" }
-wasmy-macros = { path = "../wasmy-macros" }
-inventory = "0.2.2"
 
 [features]
