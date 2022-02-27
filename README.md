@@ -2,34 +2,34 @@
 
 wasmy, easily customize my wasm app!
 
-## crates
-
-- vm dependencies: [wasmy-vm](https://docs.rs/wasmy-vm/latest/wasmy_vm/index.html)
-
-```toml
-[dependencies]
-wasmy-vm = "0.3.1"
-```
-
-- wasm dependencies: [wasmy-abi](https://docs.rs/wasmy-abi/latest/wasmy_abi/index.html)
-
-```toml
-[dependencies]
-[wasmy-abi]() = "0.3.1"
-```
-
-- [wasmy-macros](https://docs.rs/wasmy-macros/latest/wasmy_macros/index.html)
-
-```toml
-wasmy-macros = "0.3.1"
-```
-
 ## features
 
 - [x] Attribute macros implement automatic registration of handlers
 - [x] ABI is loose, freely register handlers in vm or wasm
 - [x] Completely shield vm-wasm interaction details
 - [x] Use protobuf as the interaction protocol
+
+## crates
+
+- vm dependencies: [wasmy-vm](https://docs.rs/wasmy-vm/latest/wasmy_vm/index.html)
+
+```toml
+[dependencies]
+wasmy-vm = "0.3.2"
+```
+
+- wasm dependencies: [wasmy-abi](https://docs.rs/wasmy-abi/latest/wasmy_abi/index.html)
+
+```toml
+[dependencies]
+wasmy-abi = "0.3.2"
+```
+
+- [wasmy-macros](https://docs.rs/wasmy-macros/latest/wasmy_macros/index.html)
+
+```toml
+wasmy-macros = "0.3.2"
+```
 
 ## example
 
