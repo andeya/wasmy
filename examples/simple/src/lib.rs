@@ -1,23 +1,19 @@
-use std::env;
-
 use rand::random;
-
 use wasmy_abi::*;
-use wasmy_abi::test;
+use wasmy_abi::test::*;
 
-#[wasm_entry]
-fn main(ctx: Ctx, args: InArgs) -> Result<Any> {
-    let rid: i32 = random();
-    println!("[Simple({})] env={:?}", rid, env::args().collect::<Vec<String>>());
-    println!("[Simple({})] ctx={:?}, args={{{:?}}}", rid, ctx, args);
+#[wasm_handler(0)]
+fn multiply(ctx: Ctx, args: TestArgs) -> Result<TestResult> {
+    let rid = random::<u8>() as i32;
+    println!("[Wasm-Simple({})] handle guest method({}) ctx={:?}, args={{{:?}}}", rid, 0, ctx, args);
 
-    match args.get_method() {
-        0 => {
-            let args: test::TestArgs = args.get_args()?;
-            let res: test::TestResult = ctx.call_host(0, &args)?;
-            println!("[Simple({})] call host method({}): args={{{:?}}}, result={}", rid, 0, args, res.get_c());
-            pack_any(res)
-        }
-        _ => { pack_empty() }
-    }
+    let mut host_args = TestArgs::new();
+    host_args.a = rid;
+    host_args.b = rid;
+    let host_res: TestResult = ctx.call_host(0, &host_args)?;
+    println!("[Wasm-Simple({})] call host method({}): args={{{:?}}}, result={}", rid, 0, host_res, host_res.get_c());
+
+    let mut res = TestResult::new();
+    res.set_c(args.a * args.b);
+    Ok(res)
 }

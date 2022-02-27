@@ -10,11 +10,14 @@ pub fn call_wasm<A: Message, R: Message>(wasm_info: WasmInfo, method: Method, da
     let guest_args = InArgs::try_new(method, data)?;
     instance::load(&wasm_info, |ins| -> Result<R>{
         let ctx_id = ins.gen_ctx_id();
-        #[cfg(debug_assertions)] println!("ctx_id={}, guest_args={:?}", ctx_id, guest_args);
+        #[cfg(debug_assertions)] println!("ctx_id={}, method={}, data={:?}", ctx_id, guest_args.get_method(), guest_args.get_data());
         let buffer_len = ins.use_mut_buffer(ctx_id, guest_args.compute_size() as usize, |buffer| {
             instance::write_to_with_cached_sizes(&guest_args, buffer)
         });
-        ins.call_wasm_main(ctx_id, buffer_len as i32);
+        let found = ins.call_wasm_handler(method, ctx_id, buffer_len as i32);
+        if !found {
+            return ERR_CODE_UNKNOWN.to_result("not found method");
+        }
         let buffer = ins.take_buffer(ctx_id).unwrap_or(vec![]);
         let res = if buffer.len() > 0 {
             OutResult::parse_from_bytes(buffer.as_slice()).unwrap()

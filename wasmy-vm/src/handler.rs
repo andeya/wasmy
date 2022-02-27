@@ -7,18 +7,18 @@ use lazy_static::lazy_static;
 pub use wasmy_abi::*;
 pub use wasmy_macros::vm_handler;
 
-pub type Handler = fn(&Any) -> Result<Any>;
+pub type VmHandler = fn(&Any) -> Result<Any>;
 
-pub struct HandlerAPI {
+pub struct VmHandlerAPI {
     method: Method,
-    handler: Handler,
+    handler: VmHandler,
 }
 
 static COLLECT_AND_REGISTER_ONCE: Once = Once::new();
 
-impl HandlerAPI {
-    pub const fn new(method: Method, handler: Handler) -> Self {
-        HandlerAPI { method, handler }
+impl VmHandlerAPI {
+    pub const fn new(method: Method, handler: VmHandler) -> Self {
+        VmHandlerAPI { method, handler }
     }
     pub fn register(&self) {
         set_handler(self.method, self.handler)
@@ -37,12 +37,12 @@ impl HandlerAPI {
 }
 
 lazy_static! {
-    static ref MUX: RwLock<HashMap<Method, Handler>> = RwLock::new(HashMap::<Method, Handler>::new());
+    static ref MUX: RwLock<HashMap<Method, VmHandler >> = RwLock::new(HashMap::<Method, VmHandler>::new());
 }
 
 fn collect_and_register_handlers() {
-    inventory::collect!(HandlerAPI);
-    for info in inventory::iter::<HandlerAPI> {
+    inventory::collect!(VmHandlerAPI);
+    for info in inventory::iter::<VmHandlerAPI> {
         info.register();
     }
     for (method, hdl) in MUX.read().unwrap().iter() {
@@ -50,7 +50,7 @@ fn collect_and_register_handlers() {
     }
 }
 
-pub fn set_handler(method: Method, hdl: Handler) {
+pub fn set_handler(method: Method, hdl: VmHandler) {
     MUX.write().unwrap().insert(method, hdl);
 }
 
@@ -90,7 +90,7 @@ mod test {
             res.set_c(args.a + args.b);
             Ok(res)
         }
-        HandlerAPI::collect_and_register_all()
+        VmHandlerAPI::collect_and_register_all()
     }
     // Expanded codes:
     // #[allow(redundant_semicolons)] fn add1(args : & Any) -> Result < Any >
@@ -100,7 +100,7 @@ mod test {
     //         let mut res = TestResult :: new() ; res.set_c(args.a + args.b) ;
     //         Ok(res)
     //     } ;
-    //     add1(HandlerAPI :: unpack_any(args)
-    //     ?).and_then(| res | HandlerAPI :: pack_any(res))
-    // } submit_handler! { HandlerAPI :: new(1i32, add1) }
+    //     add1(VmHandlerAPI :: unpack_any(args)
+    //     ?).and_then(| res | VmHandlerAPI :: pack_any(res))
+    // } submit_handler! { VmHandlerAPI :: new(1i32, add1) }
 }

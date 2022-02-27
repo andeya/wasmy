@@ -7,7 +7,7 @@ use std::thread;
 
 use lazy_static;
 use structopt::StructOpt;
-use wasmer::{Function, FunctionType, import_namespace, ImportObject, Memory, MemoryView, Module, Store, WasmerEnv};
+use wasmer::{Function, import_namespace, ImportObject, Memory, MemoryView, Module, Store, Type, WasmerEnv};
 use wasmer_compiler_cranelift::Cranelift;
 use wasmer_engine_universal::Universal;
 use wasmer_wasi::WasiState;
@@ -40,6 +40,7 @@ pub struct WasmInfo {
 #[derive(Clone)]
 pub(crate) struct Instance {
     instance: wasmer::Instance,
+    function_map: HashMap<Method, String>,
     message_cache: RefCell<HashMap<i32, Vec<u8>>>,
     ctx_id_count: RefCell<i32>,
 }
@@ -70,7 +71,7 @@ impl Instance {
         }
 
         // collect and register handlers once
-        HandlerAPI::collect_and_register_once();
+        VmHandlerAPI::collect_and_register_once();
 
         let file_ref: &Path = wasm_info.wasm_path.as_ref();
         let canonical = file_ref.canonicalize()?;
@@ -85,7 +86,25 @@ impl Instance {
         module.set_name(filename);
         key.thread_id = current_thread_id();
 
-        println!("module exports functions: {:?}", module.exports().functions().collect::<Vec<wasmer::ExportType<FunctionType>>>());
+        let mut function_map = HashMap::new();
+        for function in module.exports().functions() {
+            let name = function.name();
+            WasmHandlerAPI::symbol_to_method(name).map_or_else(|| {
+                #[cfg(debug_assertions)]
+                println!("module exports function(invalid for vm): {:?}", function);
+            }, |method| {
+                let ty = function.ty();
+                if ty.results().len() == 0 && ty.params().eq(&[Type::I32, Type::I32]) {
+                    function_map.insert(method, name.to_string());
+                    #[cfg(debug_assertions)]
+                    println!("module exports function(valid for vm): {:?}", function);
+                } else {
+                    #[cfg(debug_assertions)]
+                    println!("module exports function(invalid for vm): {:?}", function);
+                }
+            });
+        }
+
 
         // First, we create the `WasiEnv` with the stdio pipes
         let mut wasi_env = WasiState::new(&wasm_info.wasm_path).finalize()?;
@@ -97,6 +116,7 @@ impl Instance {
 
         let instance = Instance {
             instance: wasmer::Instance::new(&module, &import_object)?,
+            function_map,
             message_cache: RefCell::new(HashMap::with_capacity(1024)),
             ctx_id_count: RefCell::new(0),
         };
@@ -156,12 +176,17 @@ impl Instance {
     pub(crate) fn take_buffer(&self, ctx_id: i32) -> Option<Vec<u8>> {
         self.message_cache.borrow_mut().remove(&ctx_id)
     }
-    pub(crate) fn call_wasm_main(&self, ctx_id: i32, size: i32) {
+    pub(crate) fn call_wasm_handler(&self, method: Method, ctx_id: i32, size: i32) -> bool {
+        let hdl = self.function_map.get(&method);
+        if hdl.is_none() {
+            return false
+        }
+        let hdl = hdl.unwrap();
         loop {
             if let Err(e) = self
                 .instance
                 .exports
-                .get_native_function::<(i32, i32), ()>("_wasm_main")
+                .get_native_function::<(i32, i32), ()>(hdl)
                 .unwrap()
                 .call(ctx_id, size)
             {
@@ -178,7 +203,7 @@ impl Instance {
                     }
                 }
             } else {
-                return;
+                return true;
             }
         }
     }
