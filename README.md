@@ -1,17 +1,35 @@
-# wasmy
+# wasmy [![WasmGroup-QQ42726807](https://img.shields.io/badge/WasmGroup-QQ42726807-27a5ea.svg?style=flat-square)](https://jq.qq.com/?_wv=1027&k=dSmP3goX)
 
 wasmy, easily customize my wasm app!
 
-## test
+## crates
 
-```shell
-rustup target add wasm32-wasi
+- vm dependencies: [wasmy-vm](https://docs.rs/wasmy-vm/latest/wasmy_vm/index.html)
 
-cd examples/simple
-cargo +nightly build
-cd ../vm
-cargo +nightly run -- run ../simple/target/wasm32-wasi/debug/simple.wasm
+```toml
+[dependencies]
+wasmy-vm = "0.3.1"
 ```
+
+- wasm dependencies: [wasmy-abi](https://docs.rs/wasmy-abi/latest/wasmy_abi/index.html)
+
+```toml
+[dependencies]
+[wasmy-abi]() = "0.3.1"
+```
+
+- [wasmy-macros](https://docs.rs/wasmy-macros/latest/wasmy_macros/index.html)
+
+```toml
+wasmy-macros = "0.3.1"
+```
+
+## features
+
+- [x] Attribute macros implement automatic registration of handlers
+- [x] ABI is loose, freely register handlers in vm or wasm
+- [x] Completely shield vm-wasm interaction details
+- [x] Use protobuf as the interaction protocol
 
 ## example
 
@@ -42,16 +60,10 @@ fn multiply(ctx: Ctx, args: TestArgs) -> Result<TestResult> {
 - vm code
 
 ```rust
-use structopt::{clap::AppSettings, StructOpt};
 use wasmy_vm::*;
-
 use crate::test::{TestArgs, TestResult};
 
-#[derive(StructOpt, Debug)]
-#[structopt(global_settings = & [AppSettings::VersionlessSubcommands, AppSettings::ColorAuto, AppSettings::ColoredHelp])]
-enum Command {
-    RUN(WasmInfo),
-}
+// ...
 
 fn main() {
     println!("wasmy, easily customize my wasm app!");
@@ -73,4 +85,15 @@ fn add(args: TestArgs) -> Result<TestResult> {
     res.set_c(args.a + args.b);
     Ok(res)
 }
+```
+
+## test
+
+```shell
+rustup target add wasm32-wasi
+
+cd examples/simple
+cargo +nightly build
+cd ../vm
+cargo +nightly run -- run ../simple/target/wasm32-wasi/debug/simple.wasm
 ```
