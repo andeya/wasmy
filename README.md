@@ -25,7 +25,7 @@ wasmy-vm = "0.3.2"
 wasmy-abi = "0.3.2"
 ```
 
-- [wasmy-macros](https://docs.rs/wasmy-macros/latest/wasmy_macros/index.html)
+- no direct dependency: [wasmy-macros](https://docs.rs/wasmy-macros/latest/wasmy_macros/index.html)
 
 ```toml
 wasmy-macros = "0.3.2"
