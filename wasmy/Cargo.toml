@@ -1,6 +1,6 @@
 [package]
 name = "wasmy"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 resolver = "2"
 authors = ["henrylee2cn <henrylee2cn@gmail.com>"]
@@ -9,7 +9,7 @@ license = "Apache-2.0"
 repository = "https://github.com/henrylee2cn/wasmy"
 categories = ["wasm"]
 keywords = ["wasm", "webassembly", "wasm-app"]
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+readme = "../README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
