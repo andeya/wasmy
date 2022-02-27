@@ -74,33 +74,3 @@ fn handle(args: InArgs) -> OutResult {
         Err(e) => e.into(),
     }
 }
-
-
-#[cfg(test)]
-mod test {
-    use wasmy_abi::test::{TestArgs, TestResult};
-
-    use super::*;
-
-    #[test]
-    fn add() {
-        #[vm_handler(1)]
-        fn add1(args: TestArgs) -> Result<TestResult> {
-            let mut res = TestResult::new();
-            res.set_c(args.a + args.b);
-            Ok(res)
-        }
-        VmHandlerAPI::collect_and_register_all()
-    }
-    // Expanded codes:
-    // #[allow(redundant_semicolons)] fn add1(args : & Any) -> Result < Any >
-    // {
-    //     fn add1(args : TestArgs) -> Result < TestResult >
-    //     {
-    //         let mut res = TestResult :: new() ; res.set_c(args.a + args.b) ;
-    //         Ok(res)
-    //     } ;
-    //     add1(VmHandlerAPI :: unpack_any(args)
-    //     ?).and_then(| res | VmHandlerAPI :: pack_any(res))
-    // } submit_handler! { VmHandlerAPI :: new(1i32, add1) }
-}

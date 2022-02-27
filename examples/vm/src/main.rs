@@ -29,3 +29,21 @@ fn add(args: TestArgs) -> Result<TestResult> {
     res.set_c(args.a + args.b);
     Ok(res)
 }
+
+
+// Expanded codes:
+//
+// fn add(args: TestArgs) -> Result<TestResult>
+// {
+//     let mut res = TestResult::new();
+//     res.set_c(args.a + args.b);
+//     Ok(res)
+// }
+//
+// #[allow(redundant_semicolons)]
+// fn _vm_handler_0(args: &::wasmy_vm::Any)
+//                  -> ::wasmy_vm::Result<::wasmy_vm::Any>
+// {
+//     add(::wasmy_vm::VmHandlerAPI::unpack_any(args)
+//         ?).and_then(|res| ::wasmy_vm::VmHandlerAPI::pack_any(res))
+// } ::wasmy_vm::submit_handler! { :: wasmy_vm :: VmHandlerAPI :: new(0i32, _vm_handler_0) }

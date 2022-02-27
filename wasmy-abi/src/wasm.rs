@@ -11,7 +11,7 @@ extern "C" {
     pub(crate) fn _wasm_host_call(ctx_id: CtxID, offset: i32, size: i32) -> i32;
 }
 
-pub fn wasm_main<F>(ctx_id: CtxID, size: i32, handle: F)
+pub fn wasm_handle<F>(ctx_id: CtxID, size: i32, handle: F)
     where
         F: Fn(Ctx, InArgs) -> Result<Any>,
 {

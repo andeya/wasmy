@@ -22,11 +22,11 @@ pub fn vm_handler(args: TokenStream, item: TokenStream) -> TokenStream {
 
 
         #[allow(redundant_semicolons)]
-        fn #new_ident(args: &Any) -> Result<Any> {
-            #raw_ident(VmHandlerAPI::unpack_any(args)?).and_then(|res|VmHandlerAPI::pack_any(res))
+        fn #new_ident(args: &::wasmy_vm::Any) -> ::wasmy_vm::Result<::wasmy_vm::Any> {
+            #raw_ident(::wasmy_vm::VmHandlerAPI::unpack_any(args)?).and_then(|res|::wasmy_vm::VmHandlerAPI::pack_any(res))
         }
-        submit_handler!{
-           VmHandlerAPI::new(#method, #new_ident)
+        ::wasmy_vm::submit_handler!{
+           ::wasmy_vm::VmHandlerAPI::new(#method, #new_ident)
         }
     };
     #[cfg(debug_assertions)] println!("{}", new_item);
@@ -56,7 +56,7 @@ pub fn wasm_handler(args: TokenStream, item: TokenStream) -> TokenStream {
         #[no_mangle]
         pub extern "C" fn #outer_ident(ctx_id: i32, size: i32) {
             #inner_item;
-            ::wasmy_abi::wasm_main(ctx_id, size, #inner_ident)
+            ::wasmy_abi::wasm_handle(ctx_id, size, #inner_ident)
         }
     };
     new_item.extend(TokenStream::from(outer_item));
@@ -69,8 +69,8 @@ pub fn wasm_handler(args: TokenStream, item: TokenStream) -> TokenStream {
 fn wasm_gen_inner(inner_ident: Ident, raw_ident: Ident) -> proc_macro2::TokenStream {
     quote! {
         #[inline]
-        fn #inner_ident(ctx: Ctx, args: InArgs) -> Result<Any> {
-           pack_any(#raw_ident(ctx, args.get_args()?)?)
+        fn #inner_ident(ctx: ::wasmy_abi::Ctx, args: ::wasmy_abi::InArgs) -> ::wasmy_abi::Result<::wasmy_abi::Any> {
+           ::wasmy_abi::pack_any(#raw_ident(ctx, args.get_args()?)?)
         }
     }
 }

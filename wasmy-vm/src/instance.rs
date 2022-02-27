@@ -191,7 +191,7 @@ impl Instance {
                 .call(ctx_id, size)
             {
                 let estr = format!("{:?}", e);
-                eprintln!("call _wasm_main error: {}", estr);
+                eprintln!("call {} error: {}", hdl, estr);
                 if estr.contains("OOM") {
                     match self.get_memory().grow(1) {
                         Ok(p) => {
