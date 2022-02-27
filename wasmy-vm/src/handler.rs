@@ -1,6 +1,6 @@
 use std::any::Any as _;
 use std::collections::HashMap;
-use std::sync::RwLock;
+use std::sync::{Once, RwLock};
 
 pub use inventory::submit as submit_handler;
 use lazy_static::lazy_static;
@@ -13,6 +13,8 @@ pub struct HandlerAPI {
     method: Method,
     handler: Handler,
 }
+
+static COLLECT_AND_REGISTER_ONCE: Once = Once::new();
 
 impl HandlerAPI {
     pub const fn new(method: Method, handler: Handler) -> Self {
@@ -27,8 +29,10 @@ impl HandlerAPI {
     pub fn unpack_any<R: Message>(data: &Any) -> Result<R> {
         unpack_any(data)
     }
-    pub fn collect_and_register_all() {
-        collect_and_register_handlers()
+    pub(crate) fn collect_and_register_once() {
+        COLLECT_AND_REGISTER_ONCE.call_once(|| {
+            collect_and_register_handlers()
+        });
     }
 }
 

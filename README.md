@@ -1,6 +1,6 @@
 # wasmy
 
-wasmy, easily customize my wasm app.
+wasmy, easily customize my wasm app!
 
 ## test
 

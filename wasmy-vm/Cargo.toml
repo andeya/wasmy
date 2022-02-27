@@ -1,6 +1,6 @@
 [package]
 name = "wasmy-vm"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2021"
 resolver = "2"
 authors = ["henrylee2cn <henrylee2cn@gmail.com>"]

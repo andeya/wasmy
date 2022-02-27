@@ -69,6 +69,9 @@ impl Instance {
             return Ok(())
         }
 
+        // collect and register handlers once
+        HandlerAPI::collect_and_register_once();
+
         let file_ref: &Path = wasm_info.wasm_path.as_ref();
         let canonical = file_ref.canonicalize()?;
         let wasm_bytes = std::fs::read(file_ref)?;
@@ -134,7 +137,7 @@ impl Instance {
                 let ins = rlock.get(key).unwrap();
                 ins.use_mut_buffer(ctx_id, size as usize, |buffer| {
                     ins.read_view_bytes(offset as usize, size as usize, buffer);
-                    super::write_to_vec(&host_call(buffer), buffer)
+                    write_to_vec(&host_call(buffer), buffer)
                 }) as i32
             }),
         }));
@@ -143,7 +146,7 @@ impl Instance {
         let mut cache = self.message_cache.borrow_mut();
         if let Some(buffer) = cache.get_mut(&ctx_id) {
             if size > 0 {
-                super::resize_with_capacity(buffer, size);
+                resize_with_capacity(buffer, size);
             }
             return call(buffer);
         }
@@ -194,7 +197,7 @@ impl Instance {
     fn read_view_bytes(&self, offset: usize, size: usize, buffer: &mut Vec<u8>) {
         // println!("read_view_bytes: offset:{}, size:{}", offset, size);
         if size == 0 {
-            super::resize_with_capacity(buffer, size);
+            resize_with_capacity(buffer, size);
             return;
         }
         let view = self.get_view();
@@ -222,4 +225,26 @@ impl Instance {
 
 fn current_thread_id() -> u64 {
     thread::current().id().as_u64().get()
+}
+
+fn write_to_vec(msg: &dyn Message, buffer: &mut Vec<u8>) -> usize {
+    let size = msg.compute_size() as usize;
+    resize_with_capacity(buffer, size);
+    write_to_with_cached_sizes(msg, buffer)
+}
+
+pub(crate) fn write_to_with_cached_sizes(msg: &dyn Message, buffer: &mut Vec<u8>) -> usize {
+    let mut os = CodedOutputStream::bytes(buffer);
+    msg.write_to_with_cached_sizes(&mut os)
+       .or_else(|e| Err(format!("{}", e))).unwrap();
+    // os.flush().unwrap();
+    buffer.len()
+}
+
+fn resize_with_capacity(buffer: &mut Vec<u8>, new_size: usize) {
+    if new_size > buffer.capacity() {
+        buffer.resize(new_size, 0);
+    } else {
+        unsafe { buffer.set_len(new_size) };
+    }
 }

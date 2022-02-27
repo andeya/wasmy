@@ -1,5 +1,4 @@
 use structopt::{clap::AppSettings, StructOpt};
-
 use wasmy_vm::*;
 
 use crate::test::{TestArgs, TestResult};
@@ -11,8 +10,7 @@ enum Command {
 }
 
 fn main() {
-    HandlerAPI::collect_and_register_all();
-    println!("Hello, world!");
+    println!("wasmy, easily customize my wasm app!");
     match Command::from_args() {
         Command::RUN(wasm_info) => {
             load_wasm(wasm_info.clone()).unwrap();
