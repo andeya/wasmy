@@ -24,18 +24,15 @@ fn main() {
         opt.wasm_path = p.join(&opt.wasm_path);
     };
     opt.wasm_path.set_extension("wasm");
-    let fp = PathBuf::from(env::args().next().unwrap()).parent().unwrap().join(opt.wasm_path);
-    println!("wasm file path: {:?}", fp);
-    let fp = fp.canonicalize().unwrap().to_str().unwrap().to_string();
+    let wasm_path = PathBuf::from(env::args().next().unwrap()).parent().unwrap().join(opt.wasm_path);
+    println!("wasm file path: {:?}", wasm_path);
 
-    let wasm_info = WasmInfo { wasm_path: fp };
-    println!("wasm_info={:?}", wasm_info);
-    load_wasm(wasm_info.clone()).unwrap();
+    let ins_key = load_wasm(wasm_path).unwrap();
     let mut data = TestArgs::new();
     data.set_a(2);
     data.set_b(5);
-    let guest_result: TestResult = call_wasm(wasm_info, 0, data.clone()).unwrap();
-    println!("{}+{}={}", data.get_a(), data.get_b(), guest_result.get_c())
+    let res: TestResult = call_wasm(ins_key.into_wasm_uri(), 0, data.clone()).unwrap();
+    println!("{}+{}={}", data.get_a(), data.get_b(), res.get_c())
 }
 
 #[vm_handler(0)]

@@ -63,20 +63,17 @@ fn multiply(ctx: Ctx, args: TestArgs) -> Result<TestResult> {
 use wasmy_vm::*;
 use crate::test::{TestArgs, TestResult};
 
-// ...
+...
 
 fn main() {
     println!("wasmy, easily customize my wasm app!");
-    match Command::from_args() {
-        Command::RUN(wasm_info) => {
-            load_wasm(wasm_info.clone()).unwrap();
-            let mut data = TestArgs::new();
-            data.set_a(2);
-            data.set_b(5);
-            let guest_result: TestResult = call_wasm(wasm_info, 0, data.clone()).unwrap();
-            println!("{}+{}={}", data.get_a(), data.get_b(), guest_result.get_c())
-        }
-    }
+    ...
+    let ins_key = load_wasm(wasm_path).unwrap();
+    let mut data = TestArgs::new();
+    data.set_a(2);
+    data.set_b(5);
+    let res: TestResult = call_wasm(ins_key.into_wasm_uri(), 0, data.clone()).unwrap();
+    println!("{}+{}={}", data.get_a(), data.get_b(), res.get_c())
 }
 
 #[vm_handler(0)]
@@ -92,17 +89,17 @@ fn add(args: TestArgs) -> Result<TestResult> {
 - raw cargo cmd:
 
 ```shell
-rustup target add wasm32-wasi
+$ rustup target add wasm32-wasi
 
-cargo +nightly build --target=wasm32-wasi --example=simple
-cargo +nightly run --example=vm -- ../../wasm32-wasi/debug/examples/simple.wasm
+$ cargo +nightly build --target=wasm32-wasi --example=simple
+$ cargo +nightly run --example=vm -- ../../wasm32-wasi/debug/examples/simple.wasm
 ```
 
 - alias cargo cmd:
 
 ```shell
-rustup target add wasm32-wasi
+$ rustup target add wasm32-wasi
 
-cargo +nightly wasm simple
-cargo +nightly vm simple
+$ cargo +nightly wasm simple
+$ cargo +nightly vm simple
 ```

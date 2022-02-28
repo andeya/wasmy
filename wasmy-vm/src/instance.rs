@@ -1,7 +1,6 @@
 use core::ops::FnOnce;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::path::Path;
 use std::sync::RwLock;
 use std::thread;
 
@@ -12,15 +11,19 @@ use wasmer_engine_universal::Universal;
 use wasmer_wasi::WasiState;
 
 use crate::handler::*;
+use crate::wasm_info::WasmInfo;
 
 lazy_static::lazy_static! {
-    static ref INSTANCES: RwLock<HashMap<Key, Instance>> = RwLock::new(HashMap::<Key, Instance>::new());
+    static ref INSTANCES: RwLock<HashMap<InstanceKey, Instance>> = RwLock::new(HashMap::<InstanceKey, Instance>::new());
 }
 
-pub(crate) fn load<F, R>(wasm_info: &WasmInfo, callback: F) -> Result<R>
-    where F: FnOnce(&Instance) -> Result<R> + Copy
+
+pub(crate) fn load_with<B, W, F, R>(wasm_info: W, callback: F) -> Result<R>
+    where F: FnOnce(&Instance) -> Result<R> + Copy,
+          B: AsRef<[u8]>,
+          W: WasmInfo<B>,
 {
-    let key = Key { wasm_path: wasm_info.wasm_path.clone(), thread_id: current_thread_id() };
+    let key = InstanceKey { wasm_uri: wasm_info.wasm_uri().to_string(), thread_id: current_thread_id() };
     {
         if let Some(ins) = INSTANCES.read().unwrap().get(&key) {
             return callback(ins)
@@ -31,13 +34,27 @@ pub(crate) fn load<F, R>(wasm_info: &WasmInfo, callback: F) -> Result<R>
     callback(INSTANCES.read().unwrap().get(&key).unwrap())
 }
 
-#[derive(Debug, Clone)]
-pub struct WasmInfo {
-    pub wasm_path: String,
+
+pub(crate) fn with<F, R>(uri: String, callback: F) -> Result<R>
+    where F: FnOnce(&Instance) -> Result<R> + Copy
+{
+    let key = InstanceKey { wasm_uri: uri, thread_id: current_thread_id() };
+    {
+        if let Some(ins) = INSTANCES.read().unwrap().get(&key) {
+            return callback(ins)
+        }
+    };
+    let (_, cloned) = Instance::try_clone_unlock(key.wasm_uri.clone());
+    if !cloned {
+        return ERR_CODE_NONE.to_result(format!("not found wasm_uri={}", key.wasm_uri))
+    }
+    #[cfg(debug_assertions)] println!("created instance, and getting it");
+    callback(INSTANCES.read().unwrap().get(&key).unwrap())
 }
 
 #[derive(Clone)]
 pub(crate) struct Instance {
+    key: InstanceKey,
     instance: wasmer::Instance,
     function_map: HashMap<Method, String>,
     message_cache: RefCell<HashMap<i32, Vec<u8>>>,
@@ -49,41 +66,73 @@ unsafe impl Send for Instance {}
 unsafe impl Sync for Instance {}
 
 #[derive(Debug, Hash, Eq, PartialEq, Clone, WasmerEnv)]
-struct Key {
-    wasm_path: String,
+pub struct InstanceKey {
+    wasm_uri: String,
     thread_id: u64,
 }
 
+impl InstanceKey {
+    fn from(wasm_uri: String, thread_id: Option<u64>) -> InstanceKey {
+        if let Some(thread_id) = thread_id {
+            InstanceKey { wasm_uri, thread_id }
+        } else {
+            InstanceKey { wasm_uri, thread_id: current_thread_id() }
+        }
+    }
+    fn set_current_thread_id(&mut self) {
+        self.thread_id = current_thread_id()
+    }
+    pub fn get_thread_id(self) -> u64 {
+        return self.thread_id
+    }
+    pub fn get_wasm_uri(&self) -> &String {
+        return &self.wasm_uri
+    }
+    pub fn into_wasm_uri(self) -> String {
+        return self.wasm_uri
+    }
+    pub fn destruct(self) -> (String, u64) {
+        return (self.wasm_uri, self.thread_id)
+    }
+}
 
 impl Instance {
-    fn new_unlock(wasm_info: &WasmInfo) -> anyhow::Result<()> {
-        let mut key = Key { wasm_path: wasm_info.wasm_path.clone(), thread_id: 0 };
+    pub(crate) fn get_key(&self) -> &InstanceKey {
+        return &self.key
+    }
+    fn try_clone_unlock(wasm_uri: String) -> (InstanceKey, bool) {
+        let mut key = InstanceKey::from(wasm_uri, Some(0));
         let ins = {
             let rlock = INSTANCES.read().unwrap();
             rlock.get(&key).map(|ins| ins.clone())
         };
         if let Some(ins) = ins {
-            key.thread_id = current_thread_id();
+            key.set_current_thread_id();
             INSTANCES.write().unwrap().insert(key.clone(), ins);
-            println!("[{}] clone instance: {}", key.thread_id, key.wasm_path);
+            println!("cloned instance: thread_id={}, wasm_uri={}", key.thread_id, key.wasm_uri);
+            return (key, true)
+        }
+        return (key, false)
+    }
+
+    fn new_unlock<B, W>(wasm_info: W) -> anyhow::Result<()>
+        where B: AsRef<[u8]>,
+              W: WasmInfo<B>,
+    {
+        let (mut key, cloned) = Self::try_clone_unlock(wasm_info.wasm_uri());
+        if cloned {
             return Ok(())
         }
-
         // collect and register handlers once
         VmHandlerAPI::collect_and_register_once();
 
-        let file_ref: &Path = wasm_info.wasm_path.as_ref();
-        let canonical = file_ref.canonicalize()?;
-        let wasm_bytes = std::fs::read(file_ref)?;
-        let filename = canonical.as_path().to_str().unwrap();
+        key.set_current_thread_id();
+        println!("compiling module, wasm_uri={}...", key.wasm_uri);
 
         let store: Store = Store::new(&Universal::new(Cranelift::default()).engine());
 
-        println!("compiling module {}...", filename);
-
-        let mut module = Module::new(&store, wasm_bytes)?;
-        module.set_name(filename);
-        key.thread_id = current_thread_id();
+        let mut module = Module::new(&store, wasm_info.into_wasm_bytes()?)?;
+        module.set_name(key.wasm_uri.as_str());
 
         let mut function_map = HashMap::new();
         for function in module.exports().functions() {
@@ -106,7 +155,7 @@ impl Instance {
 
 
         // First, we create the `WasiEnv` with the stdio pipes
-        let mut wasi_env = WasiState::new(&wasm_info.wasm_path).finalize()?;
+        let mut wasi_env = WasiState::new(&key.wasm_uri).finalize()?;
 
         // Then, we get the import object related to our WASI
         // and attach it to the Wasm instance.
@@ -114,20 +163,21 @@ impl Instance {
         Self::register_import_object(&mut import_object, &store, key.clone());
 
         let instance = Instance {
+            key: key.clone(),
             instance: wasmer::Instance::new(&module, &import_object)?,
             function_map,
             message_cache: RefCell::new(HashMap::with_capacity(1024)),
             ctx_id_count: RefCell::new(0),
         };
-        println!("[{}] created instance: {}", key.thread_id, key.wasm_path);
+        println!("created instance: thread_id={}, wasm_uri={}", key.thread_id, key.wasm_uri);
 
         INSTANCES.write().unwrap().insert(key, instance);
         Ok(())
     }
 
-    fn register_import_object(import_object: &mut ImportObject, store: &Store, key: Key) {
+    fn register_import_object(import_object: &mut ImportObject, store: &Store, key: InstanceKey) {
         import_object.register("env", import_namespace!({
-            "_wasm_host_recall" => Function::new_native_with_env(store, key.clone(), |key: &Key, ctx_id: i32, offset: i32| {
+            "_wasm_host_recall" => Function::new_native_with_env(store, key.clone(), |key: &InstanceKey, ctx_id: i32, offset: i32| {
                 #[cfg(debug_assertions)]
                 println!("_wasm_host_recall: key={:?}, ctx_id={}, offset={}", key, ctx_id, offset);
                 let rlock = INSTANCES.read().unwrap();
@@ -139,7 +189,7 @@ impl Instance {
                     len
                 });
             }),
-            "_wasm_host_restore" => Function::new_native_with_env(store, key.clone(), |key: &Key, ctx_id: i32, offset: i32, size: i32| {
+            "_wasm_host_restore" => Function::new_native_with_env(store, key.clone(), |key: &InstanceKey, ctx_id: i32, offset: i32, size: i32| {
                 #[cfg(debug_assertions)]
                 println!("_wasm_host_restore: key={:?}, ctx_id={}, offset={}, size={}", key, ctx_id, offset, size);
                 let rlock = INSTANCES.read().unwrap();
@@ -149,7 +199,7 @@ impl Instance {
                     buffer.len()
                 });
             }),
-            "_wasm_host_call" => Function::new_native_with_env(store, key.clone(), |key: &Key, ctx_id: i32, offset: i32, size: i32|-> i32 {
+            "_wasm_host_call" => Function::new_native_with_env(store, key.clone(), |key: &InstanceKey, ctx_id: i32, offset: i32, size: i32|-> i32 {
                 #[cfg(debug_assertions)]
                 println!("_wasm_host_call: key={:?}, ctx_id={}, offset={}, size={}", key, ctx_id, offset, size);
                 let rlock = INSTANCES.read().unwrap();
