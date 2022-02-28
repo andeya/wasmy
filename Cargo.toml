@@ -1,12 +1,45 @@
-[workspace]
+[package]
+name = "wasmy"
+version = "0.3.2"
+edition = "2021"
 resolver = "2"
+authors = ["henrylee2cn <henrylee2cn@gmail.com>"]
+description = "wasmy, easily customize my wasm app!"
+license = "Apache-2.0"
+repository = "https://github.com/henrylee2cn/wasmy"
+categories = ["wasm"]
+keywords = ["wasm", "webassembly", "wasm-app"]
+readme = "./README.md"
+
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+
+[target.'cfg(not(target_family="wasm"))'.dependencies]
+wasmy-vm = { path = "./wasmy-vm" }
+structopt = { version = "0.3", features = ["color"] }
+[[example]]
+name = "vm"
+path = "./examples/vm/vm.rs"
+
+
+[target.'cfg(target_family="wasm")'.dependencies]
+wasmy-abi = { path = "./wasmy-abi" }
+rand = "0.8.4"
+[[example]]
+crate-type = ['cdylib']
+name = "simple"
+path = "./examples/wasm/simple.rs"
+[[example]]
+crate-type = ['cdylib']
+name = "state"
+path = "./examples/wasm/state.rs"
+
+[workspace]
 members = [
-    "wasmy",
     "wasmy-abi",
     "wasmy-vm",
     "wasmy-macros",
 ]
-exclude = [
-    "examples/simple",
-    "examples/vm",
-]
+exclude = []
+

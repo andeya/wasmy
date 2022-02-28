@@ -87,13 +87,22 @@ fn add(args: TestArgs) -> Result<TestResult> {
 }
 ```
 
-## test
+## test simple example
+
+- raw cargo cmd:
 
 ```shell
 rustup target add wasm32-wasi
 
-cd examples/simple
-cargo +nightly build
-cd ../vm
-cargo +nightly run -- run ../simple/target/wasm32-wasi/debug/simple.wasm
+cargo +nightly build --target=wasm32-wasi --example=simple
+cargo +nightly run --example=vm -- ../../wasm32-wasi/debug/examples/simple.wasm
+```
+
+- alias cargo cmd:
+
+```shell
+rustup target add wasm32-wasi
+
+cargo +nightly wasm simple
+cargo +nightly vm simple
 ```

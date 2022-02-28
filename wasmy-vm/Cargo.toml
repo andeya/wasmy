@@ -22,7 +22,6 @@ wasmer-engine-universal = "2.0.0"
 wasmer-wasi = "2.0.0"
 wasmer-compiler-cranelift = { version = "2.0.0" }
 serde = { version = "1.0", features = ["derive"] }
-structopt = { version = "0.3", features = ["color"] }
 anyhow = "1"
 protobuf = { version = "2", features = ["with-bytes"] }
 lazy_static = "1.4.0"

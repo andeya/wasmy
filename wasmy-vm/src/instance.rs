@@ -6,7 +6,6 @@ use std::sync::RwLock;
 use std::thread;
 
 use lazy_static;
-use structopt::StructOpt;
 use wasmer::{Function, import_namespace, ImportObject, Memory, MemoryView, Module, Store, Type, WasmerEnv};
 use wasmer_compiler_cranelift::Cranelift;
 use wasmer_engine_universal::Universal;
@@ -32,7 +31,7 @@ pub(crate) fn load<F, R>(wasm_info: &WasmInfo, callback: F) -> Result<R>
     callback(INSTANCES.read().unwrap().get(&key).unwrap())
 }
 
-#[derive(StructOpt, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct WasmInfo {
     pub wasm_path: String,
 }

@@ -1,2 +1,6 @@
 paths = ["./"]
+[cargo-new]
+vcs = "none"
 [alias]
+wasm = "build --target=wasm32-wasi --example"
+vm = "run --example=vm -- --path_prefix=../../wasm32-wasi/debug/examples"
