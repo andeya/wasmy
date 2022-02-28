@@ -16,7 +16,7 @@ readme = "./README.md"
 
 
 [target.'cfg(not(target_family="wasm"))'.dependencies]
-wasmy-vm = { path = "./wasmy-vm" }
+wasmy-vm = "0.3.3"
 structopt = { version = "0.3", features = ["color"] }
 [[example]]
 name = "vm"
@@ -24,7 +24,7 @@ path = "./examples/vm/vm.rs"
 
 
 [target.'cfg(target_family="wasm")'.dependencies]
-wasmy-abi = { path = "./wasmy-abi" }
+wasmy-abi = "0.3.3"
 rand = "0.8.4"
 [[example]]
 crate-type = ['cdylib']
