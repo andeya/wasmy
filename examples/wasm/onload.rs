@@ -1,12 +1,30 @@
+#![feature(thread_id_value)]
+
+use std::thread;
+
 use rand::random;
+
 use wasmy_abi::*;
 use wasmy_abi::test::*;
 
-#[wasm_handler(0)]
+static mut STATE: u64 = 0;
+
+/// initialization
+#[wasm_onload]
+fn init() {
+    unsafe {
+        STATE = thread::current().id().as_u64().get();
+        println!("[Wasm-Simple] initialized STATE to thread id: {}", STATE);
+    }
+}
+
+#[wasm_handle(0)]
 fn multiply(ctx: Ctx, args: TestArgs) -> Result<TestResult> {
     let rid = random::<u8>() as i32;
-    println!("[Wasm-Simple({})] handle guest method({}) ctx={:?}, args={{{:?}}}", rid, 0, ctx, args);
-
+    unsafe {
+        STATE += 1;
+        println!("[Wasm-Simple({})] STATE={}, handle guest method({}) ctx={:?}, args={{{:?}}}", rid, STATE, 0, ctx, args);
+    }
     let mut host_args = TestArgs::new();
     host_args.a = rid;
     host_args.b = rid;
@@ -21,17 +39,39 @@ fn multiply(ctx: Ctx, args: TestArgs) -> Result<TestResult> {
 
 // Expanded codes:
 //
+// #[allow(redundant_semicolons)]
+// #[inline]
+// #[no_mangle]
+// pub extern "C" fn
+// _wasm_onload()
+// {
+//     /// initialization
+//     fn init()
+//     {
+//         unsafe
+//             {
+//                 STATE = thread::current().id().as_u64().get();
+//                 println!("[Wasm-Simple] initialized STATE to thread id: {}", STATE);
+//             }
+//     }
+//     ;
+//     init();
+// }
+//
 // fn multiply(ctx: Ctx, args: TestArgs) -> Result<TestResult>
 // {
 //     let rid = random::<u8>() as i32;
-//     println!("[Wasm-Simple({})] handle guest method({}) ctx={:?}, args={{{:?}}}", rid,
-//              0, ctx, args);
+//     unsafe
+//         {
+//             STATE += 1;
+//             println!("[Wasm-Simple({})] STATE={}, handle guest method({}) ctx={:?}, args={{{:?}}}",
+//                      rid, STATE, 0, ctx, args);
+//         }
 //     let mut host_args = TestArgs::new();
-//     host_args.a = rid
-//     ;
-//     host_args.b = rid;
-//     let host_res: TestResult =
-//         ctx.call_host(0, &host_args)?;
+//     host_args.a = rid;
+//     host_args.b
+//         = rid;
+//     let host_res: TestResult = ctx.call_host(0, &host_args)?;
 //     println!("[Wasm-Simple({})] call host method({}): args={{{:?}}}, result={}", rid,
 //              0, host_res, host_res.get_c());
 //     let mut res = TestResult::new();
@@ -43,7 +83,7 @@ fn multiply(ctx: Ctx, args: TestArgs) -> Result<TestResult> {
 // #[inline]
 // #[no_mangle]
 // pub extern "C" fn
-// _wasm_handler_0(ctx_id: i32, size: i32)
+// _wasm_handle_0(ctx_id: i32, size: i32)
 // {
 //     #[inline]
 //     fn

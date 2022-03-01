@@ -5,7 +5,7 @@ use std::sync::RwLock;
 use std::thread;
 
 use lazy_static;
-use wasmer::{Function, import_namespace, ImportObject, Memory, MemoryView, Module, Store, Type, WasmerEnv};
+use wasmer::{ExportError, Function, import_namespace, ImportObject, Memory, MemoryView, Module, Store, Type, WasmerEnv};
 use wasmer_compiler_cranelift::Cranelift;
 use wasmer_engine_universal::Universal;
 use wasmer_wasi::WasiState;
@@ -29,7 +29,7 @@ pub(crate) fn load_with<B, W, F, R>(wasm_info: W, callback: F) -> Result<R>
             return callback(ins)
         }
     };
-    Instance::new_unlock(wasm_info)?;
+    Instance::new_clone_unlock(wasm_info)?;
     #[cfg(debug_assertions)] println!("created instance, and getting it");
     callback(INSTANCES.read().unwrap().get(&key).unwrap())
 }
@@ -115,19 +115,19 @@ impl Instance {
         return (key, false)
     }
 
-    fn new_unlock<B, W>(wasm_info: W) -> anyhow::Result<()>
+    fn new_clone_unlock<B, W>(wasm_info: W) -> anyhow::Result<()>
         where B: AsRef<[u8]>,
               W: WasmInfo<B>,
     {
-        let (mut key, cloned) = Self::try_clone_unlock(wasm_info.wasm_uri());
+        let (key0, cloned) = Self::try_clone_unlock(wasm_info.wasm_uri());
         if cloned {
             return Ok(())
         }
         // collect and register handlers once
         VmHandlerAPI::collect_and_register_once();
 
-        key.set_current_thread_id();
-        println!("compiling module, wasm_uri={}...", key.wasm_uri);
+        let key = InstanceKey::from(key0.wasm_uri.clone(), None);
+        #[cfg(debug_assertions)]println!("compiling module, wasm_uri={}...", key.wasm_uri);
 
         let store: Store = Store::new(&Universal::new(Cranelift::default()).engine());
 
@@ -138,17 +138,14 @@ impl Instance {
         for function in module.exports().functions() {
             let name = function.name();
             WasmHandlerAPI::symbol_to_method(name).map_or_else(|| {
-                #[cfg(debug_assertions)]
-                println!("module exports function(invalid for vm): {:?}", function);
+                #[cfg(debug_assertions)]println!("module exports function(invalid for vm): {:?}", function);
             }, |method| {
                 let ty = function.ty();
                 if ty.results().len() == 0 && ty.params().eq(&[Type::I32, Type::I32]) {
                     function_map.insert(method, name.to_string());
-                    #[cfg(debug_assertions)]
-                    println!("module exports function(valid for vm): {:?}", function);
+                    #[cfg(debug_assertions)]println!("module exports function(valid for vm): {:?}", function);
                 } else {
-                    #[cfg(debug_assertions)]
-                    println!("module exports function(invalid for vm): {:?}", function);
+                    #[cfg(debug_assertions)]println!("module exports function(invalid for vm): {:?}", function);
                 }
             });
         }
@@ -169,12 +166,35 @@ impl Instance {
             message_cache: RefCell::new(HashMap::with_capacity(1024)),
             ctx_id_count: RefCell::new(0),
         };
-        println!("created instance: thread_id={}, wasm_uri={}", key.thread_id, key.wasm_uri);
+        #[cfg(debug_assertions)]println!("created instance: thread_id={}, wasm_uri={}", key.thread_id, key.wasm_uri);
 
+        instance.init()?; // only call once
+
+        #[cfg(debug_assertions)]println!("initial instance is stored: thread_id={}, wasm_uri={}", key0.thread_id, key0.wasm_uri);
+        INSTANCES.write().unwrap().insert(key0, instance.clone());
+
+        println!("current instance is stored: thread_id={}, wasm_uri={}", key.thread_id, key.wasm_uri);
         INSTANCES.write().unwrap().insert(key, instance);
+
         Ok(())
     }
-
+    fn init(&self) -> anyhow::Result<()> {
+        let res = self
+            .instance
+            .exports
+            .get_native_function::<(), ()>(WasmHandlerAPI::onload_symbol());
+        if res.is_ok() {
+            Ok(res.unwrap().call()?)
+        } else {
+            res.map_or_else(|e| {
+                if let ExportError::Missing(_) = e {
+                    Ok(())
+                } else {
+                    Err(anyhow::Error::new(e))
+                }
+            }, |_| Ok(()))
+        }
+    }
     fn register_import_object(import_object: &mut ImportObject, store: &Store, key: InstanceKey) {
         import_object.register("env", import_namespace!({
             "_wasm_host_recall" => Function::new_native_with_env(store, key.clone(), |key: &InstanceKey, ctx_id: i32, offset: i32| {

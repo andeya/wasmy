@@ -4,10 +4,11 @@ wasmy, easily customize my wasm app!
 
 ## features
 
-- [x] Attribute macros implement automatic registration of handlers
-- [x] ABI is loose, freely register handlers in vm or wasm
 - [x] Completely shield vm-wasm interaction details
 - [x] Use protobuf as the interaction protocol
+- [x] Simple and flexible ABI, supports freely adding vm and wasm handlers using
+  attribute macros (`#[vm_handle(0)]`/`#[wasm_handle(0)]`)
+- [x] Provide attribute macro `#[wasm_onload]` support to initialize wasm
 
 ## crates
 
@@ -40,7 +41,7 @@ use rand::random;
 use wasmy_abi::*;
 use wasmy_abi::test::*;
 
-#[wasm_handler(0)]
+#[wasm_handle(0)]
 fn multiply(ctx: Ctx, args: TestArgs) -> Result<TestResult> {
     let rid = random::<u8>() as i32;
     println!("[Wasm-Simple({})] handle guest method({}) ctx={:?}, args={{{:?}}}", rid, 0, ctx, args);
@@ -76,7 +77,7 @@ fn main() {
     println!("{}+{}={}", data.get_a(), data.get_b(), res.get_c())
 }
 
-#[vm_handler(0)]
+#[vm_handle(0)]
 fn add(args: TestArgs) -> Result<TestResult> {
     let mut res = TestResult::new();
     res.set_c(args.a + args.b);

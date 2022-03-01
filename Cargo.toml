@@ -32,8 +32,8 @@ name = "simple"
 path = "./examples/wasm/simple.rs"
 [[example]]
 crate-type = ['cdylib']
-name = "state"
-path = "./examples/wasm/state.rs"
+name = "onload"
+path = "./examples/wasm/onload.rs"
 
 [workspace]
 members = [

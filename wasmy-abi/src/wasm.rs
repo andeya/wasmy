@@ -4,6 +4,7 @@ pub use protobuf::well_known_types::Any;
 use crate::abi::*;
 use crate::types::*;
 
+/// The ABI interaction functions of the virtual machine.
 // #[cfg(target_arch = "wasm32")]
 extern "C" {
     pub(crate) fn _wasm_host_recall(ctx_id: CtxID, offset: i32);
@@ -11,6 +12,7 @@ extern "C" {
     pub(crate) fn _wasm_host_call(ctx_id: CtxID, offset: i32, size: i32) -> i32;
 }
 
+/// The underlying function of wasm to handle requests.
 pub fn wasm_handle<F>(ctx_id: CtxID, size: i32, handle: F)
     where
         F: Fn(Ctx, InArgs) -> Result<Any>,

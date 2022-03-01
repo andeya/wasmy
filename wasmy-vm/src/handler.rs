@@ -5,7 +5,7 @@ use std::sync::{Once, RwLock};
 pub use inventory::submit as submit_handler;
 use lazy_static::lazy_static;
 pub use wasmy_abi::*;
-pub use wasmy_macros::vm_handler;
+pub use wasmy_macros::vm_handle;
 
 pub type VmHandler = fn(&Any) -> Result<Any>;
 

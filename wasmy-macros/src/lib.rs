@@ -3,20 +3,24 @@ use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
 
-/// Entry pointer of function, take function handler as argument.
-///
-/// `target fn type: fn<A: wasmy_abi::Message, R: wasmy_abi::Message>(A) -> Result<R>`
+/// Register vm's ABI for handling wasm callbacks.
+/// format description: `#[vm_handle(wasmy_abi::Method)]`
+/// example:
+/// ```
+/// #[vm_handle(123)]
+/// fn xxx<A: wasmy_abi::Message, R: wasmy_abi::Message>(args: A) -> wasmy_abi::Result<R> {todo!()}
+/// ```
 /// command to check expanded code: `cargo +nightly rustc -- -Zunstable-options --pretty=expanded`
 #[proc_macro_attribute]
 #[cfg(not(test))] // Work around for rust-lang/rust#62127
-pub fn vm_handler(args: TokenStream, item: TokenStream) -> TokenStream {
+pub fn vm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
     let raw_item = proc_macro2::TokenStream::from(item.clone());
     let raw_ident = syn::parse_macro_input!(item as syn::ItemFn).sig.ident;
-    let method = args.to_string().parse::<i32>().expect("expect #[vm_handler(i32)]");
+    let method = args.to_string().parse::<i32>().expect("expect #[vm_handle(wasmy_abi::Method)]");
     if method < 0 {
-        panic!("vm_handler: method({})<0", method);
+        panic!("vm_handle: method({})<0", method);
     }
-    let new_ident = Ident::new(&format!("_vm_handler_{}", method), Span::call_site());
+    let new_ident = Ident::new(&format!("_vm_handle_{}", method), Span::call_site());
     let new_item = quote! {
         #raw_item
 
@@ -34,22 +38,26 @@ pub fn vm_handler(args: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 
-/// Entry pointer of function, take function handler as argument.
-///
-/// `target fn type: fn<A: wasmy_abi::Message, R: wasmy_abi::Message>(wasmy_abi::Ctx, A) -> Result<R>`
+/// Register wasm's ABI for handling requests.
+/// format description: `#[wasm_handle(wasmy_abi::Method)]`
+/// example:
+/// ```
+/// #[wasm_handle(123)]
+/// fn xxx<A: wasmy_abi::Message, R: wasmy_abi::Message>(ctx: wasmy_abi::Ctx, args: A) -> wasmy_abi::Result<R> {todo!()}
+/// ```
 /// command to check expanded code: `cargo +nightly rustc -- -Zunstable-options --pretty=expanded`
 #[proc_macro_attribute]
 #[cfg(not(test))] // Work around for rust-lang/rust#62127
-pub fn wasm_handler(args: TokenStream, item: TokenStream) -> TokenStream {
+pub fn wasm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
     let mut new_item = item.clone();
     let raw_ident = syn::parse_macro_input!(item as syn::ItemFn).sig.ident;
-    let method = args.to_string().parse::<i32>().expect("expect #[wasm_handler(i32)]");
+    let method = args.to_string().parse::<i32>().expect("expect #[wasm_handle(wasmy_abi::Method)]");
     if method < 0 {
-        panic!("wasm_handler: method({})<0", method);
+        panic!("wasm_handle: method({})<0", method);
     }
     let inner_ident = Ident::new("_inner", Span::call_site());
     let inner_item = wasm_gen_inner(inner_ident.clone(), raw_ident);
-    let outer_ident = Ident::new(&format!("_wasm_handler_{}", method), Span::call_site());
+    let outer_ident = Ident::new(&format!("_wasm_handle_{}", method), Span::call_site());
     let outer_item = quote! {
         #[allow(redundant_semicolons)]
         #[inline]
@@ -73,4 +81,32 @@ fn wasm_gen_inner(inner_ident: Ident, raw_ident: Ident) -> proc_macro2::TokenStr
            ::wasmy_abi::pack_any(#raw_ident(ctx, args.get_args()?)?)
         }
     }
+}
+
+/// Register the ABI for wasm load-time initialization state.
+/// Register wasm's ABI for handling requests.
+/// format description: `#[wasm_onload]`
+/// example:
+/// ```
+/// #[wasm_onload]
+/// fn xxx() {}
+/// ```
+/// command to check expanded code: `cargo +nightly rustc -- -Zunstable-options --pretty=expanded`
+#[proc_macro_attribute]
+#[cfg(not(test))] // Work around for rust-lang/rust#62127
+pub fn wasm_onload(_args: TokenStream, item: TokenStream) -> TokenStream {
+    let raw_item = proc_macro2::TokenStream::from(item.clone());
+    let raw_ident = syn::parse_macro_input!(item as syn::ItemFn).sig.ident;
+    let new_ident = Ident::new("_wasm_onload", Span::call_site());
+    let new_item = quote! {
+        #[allow(redundant_semicolons)]
+        #[inline]
+        #[no_mangle]
+        pub extern "C" fn #new_ident() {
+            #raw_item;
+            #raw_ident();
+        }
+    };
+    #[cfg(debug_assertions)] println!("{}", new_item);
+    TokenStream::from(new_item)
 }

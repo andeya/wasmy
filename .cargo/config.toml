@@ -1,4 +1,10 @@
-paths = ["./"]
+paths = [
+    "./",
+    "./wasmy-macros/",
+    "./wasmy-abi/",
+    "./wasmy-vm/",
+]
+
 [cargo-new]
 vcs = "none"
 [alias]

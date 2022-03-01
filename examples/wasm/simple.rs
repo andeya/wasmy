@@ -1,8 +1,9 @@
 use rand::random;
+
 use wasmy_abi::*;
 use wasmy_abi::test::*;
 
-#[wasm_handler(0)]
+#[wasm_handle(0)]
 fn multiply(ctx: Ctx, args: TestArgs) -> Result<TestResult> {
     let rid = random::<u8>() as i32;
     println!("[Wasm-Simple({})] handle guest method({}) ctx={:?}, args={{{:?}}}", rid, 0, ctx, args);
@@ -43,7 +44,7 @@ fn multiply(ctx: Ctx, args: TestArgs) -> Result<TestResult> {
 // #[inline]
 // #[no_mangle]
 // pub extern "C" fn
-// _wasm_handler_0(ctx_id: i32, size: i32)
+// _wasm_handle_0(ctx_id: i32, size: i32)
 // {
 //     #[inline]
 //     fn
