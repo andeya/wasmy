@@ -27,13 +27,12 @@ fn main() {
     let wasm_path = PathBuf::from(env::args().next().unwrap()).parent().unwrap().join(opt.wasm_path);
     println!("wasm file path: {:?}", wasm_path);
 
-    let ins_key = load_wasm(wasm_path).unwrap();
+    let wasm_uri = load_wasm(wasm_path).unwrap();
     let mut data = TestArgs::new();
     data.set_a(2);
     data.set_b(5);
-    let uri = ins_key.into_wasm_uri();
     for i in 1..=3 {
-        let res: TestResult = call_wasm(uri.clone(), 0, data.clone()).unwrap();
+        let res: TestResult = wasm_uri.call_wasm(0, data.clone()).unwrap();
         println!("NO.{}: {}+{}={}", i, data.get_a(), data.get_b(), res.get_c())
     }
 }

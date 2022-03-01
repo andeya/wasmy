@@ -1,7 +1,7 @@
 use std::convert::Infallible;
 use std::fmt::Formatter;
 use std::mem;
-use std::ops::FromResidual;
+use std::ops::{Deref, FromResidual};
 
 pub use protobuf::{CodedOutputStream, Message, ProtobufEnum};
 pub use protobuf::well_known_types::Any;
@@ -45,10 +45,14 @@ impl CodeMsg {
 pub const ERR_CODE_UNKNOWN: ErrCode = ErrCode(-1);
 pub const ERR_CODE_PROTO: ErrCode = ErrCode(-2);
 pub const ERR_CODE_NONE: ErrCode = ErrCode(-3);
+pub const ERR_CODE_MEM: ErrCode = ErrCode(-4);
 
 pub struct ErrCode(i32);
 
 impl ErrCode {
+    pub fn value(&self) -> i32 {
+        self.0
+    }
     #[inline]
     pub fn to_code_msg<S: ToString>(&self, msg: S) -> CodeMsg {
         CodeMsg::new(self.0, msg)
@@ -56,6 +60,14 @@ impl ErrCode {
     #[inline]
     pub fn to_result<T, S: ToString>(&self, msg: S) -> Result<T> {
         CodeMsg::result(self.0, msg)
+    }
+}
+
+impl Deref for ErrCode {
+    type Target = i32;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
