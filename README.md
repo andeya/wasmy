@@ -16,20 +16,20 @@ wasmy, easily customize my wasm app!
 
 ```toml
 [dependencies]
-wasmy-vm = "0.3.3"
+wasmy-vm = "0.4.0"
 ```
 
 - [wasmy-abi](https://docs.rs/wasmy-abi/latest/wasmy_abi/index.html) : wasm dependencies
 
 ```toml
 [dependencies]
-wasmy-abi = "0.3.3"
+wasmy-abi = "0.4.0"
 ```
 
 - [wasmy-macros](https://docs.rs/wasmy-macros/latest/wasmy_macros/index.html) : no direct dependency
 
 ```toml
-wasmy-macros = "0.3.3"
+wasmy-macros = "0.4.0"
 ```
 
 ## example
