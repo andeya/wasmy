@@ -6,8 +6,8 @@ wasmy, easily customize my wasm app!
 
 - [x] Completely shield vm-wasm interaction details
 - [x] Use protobuf as the interaction protocol
-- [x] Simple and flexible ABI, supports freely adding vm and wasm handlers using
-  attribute macros (`#[vm_handle(0)]`/`#[wasm_handle(0)]`)
+- [x] Simple and flexible ABI, supports freely adding vm and wasm handlers using attribute macros (`#[vm_handle(0)]`
+  /`#[wasm_handle(0)]`)
 - [x] Provide attribute macro `#[wasm_onload]` support to initialize wasm
 
 ## crates
@@ -69,12 +69,14 @@ use crate::test::{TestArgs, TestResult};
 fn main() {
     println!("wasmy, easily customize my wasm app!");
     ...
-    let ins_key = load_wasm(wasm_path).unwrap();
+    let wasm_uri = load_wasm(wasm_path).unwrap();
     let mut data = TestArgs::new();
     data.set_a(2);
     data.set_b(5);
-    let res: TestResult = call_wasm(ins_key.into_wasm_uri(), 0, data.clone()).unwrap();
-    println!("{}+{}={}", data.get_a(), data.get_b(), res.get_c())
+    for i in 1..=3 {
+        let res: TestResult = wasm_uri.call_wasm(0, data.clone()).unwrap();
+        println!("NO.{}: {}+{}={}", i, data.get_a(), data.get_b(), res.get_c())
+    }
 }
 
 #[vm_handle(0)]
