@@ -11,8 +11,8 @@ message InArgs {
   google.protobuf.Any data = 2;
 }
 
-// OutResult result for interaction between the VM and WASM
-message OutResult {
+// OutRets result for interaction between the VM and WASM
+message OutRets {
   int32 code = 1;
   string msg = 2;
   google.protobuf.Any data = 3;

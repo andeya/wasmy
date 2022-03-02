@@ -2,6 +2,7 @@ use std::env;
 use std::path::PathBuf;
 
 use structopt::StructOpt;
+use tokio;
 
 use wasmy_vm::*;
 
@@ -17,7 +18,8 @@ struct Opt {
     wasm_path: PathBuf,
 }
 
-fn main() {
+#[tokio::main(flavor = "multi_thread", worker_threads = 20)]
+async fn main() {
     println!("wasmy, easily customize my wasm app!");
     let mut opt: Opt = Opt::from_args();
     if let Some(p) = opt.path_prefix {
@@ -31,9 +33,13 @@ fn main() {
     let mut data = TestArgs::new();
     data.set_a(2);
     data.set_b(5);
-    for i in 1..=3 {
-        let res: TestResult = wasm_uri.call_wasm(0, data.clone()).unwrap();
-        println!("NO.{}: {}+{}={}", i, data.get_a(), data.get_b(), res.get_c())
+    for i in 1..=200 {
+        let data = data.clone();
+        let wasm_uri = wasm_uri.clone();
+        tokio::spawn(async move {
+            let res: TestResult = wasm_uri.call_wasm(0, data.clone()).unwrap();
+            println!("NO.{}: {}+{}={}", i, data.get_a(), data.get_b(), res.get_c())
+        });
     }
 }
 

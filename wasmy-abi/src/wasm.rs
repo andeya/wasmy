@@ -22,7 +22,7 @@ pub fn wasm_handle<F>(ctx_id: CtxID, size: i32, handle: F)
     }
     let mut buffer = vec![0u8; size as usize];
     unsafe { _wasm_host_recall(ctx_id, buffer.as_ptr() as i32) };
-    let res: OutResult = match InArgs::parse_from_bytes(&buffer) {
+    let res: OutRets = match InArgs::parse_from_bytes(&buffer) {
         Ok(guest_args) => {
             handle(Ctx::from_id(ctx_id), guest_args).into()
         }
@@ -52,7 +52,7 @@ impl Ctx {
         }
         buffer.resize(size as usize, 0);
         unsafe { _wasm_host_recall(self.get_id(), buffer.as_ptr() as i32) };
-        OutResult::parse_from_bytes(buffer.as_slice())?
+        OutRets::parse_from_bytes(buffer.as_slice())?
             .into()
     }
 }

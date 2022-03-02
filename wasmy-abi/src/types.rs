@@ -105,15 +105,15 @@ impl From<protobuf::ProtobufError> for CodeMsg {
     }
 }
 
-impl<R: Message> From<OutResult> for Result<R> {
-    fn from(out_result: OutResult) -> Self {
-        if out_result.get_code() != 0 {
-            return CodeMsg::result(out_result.get_code(), out_result.get_msg());
+impl<R: Message> From<OutRets> for Result<R> {
+    fn from(out_rets: OutRets) -> Self {
+        if out_rets.get_code() != 0 {
+            return CodeMsg::result(out_rets.get_code(), out_rets.get_msg());
         }
-        out_result.get_data()
+        out_rets.get_data()
                   .unpack::<R>()?
             .map_or_else(
-                || ERR_CODE_PROTO.to_result("protobuf: the message type does not match the out_result"),
+                || ERR_CODE_PROTO.to_result("protobuf: the message type does not match the out_rets"),
                 |data| Ok(data),
             )
     }
@@ -156,28 +156,28 @@ pub fn pack_empty() -> Result<Any> {
     Ok(Any::pack(&Empty::new())?)
 }
 
-impl From<CodeMsg> for OutResult {
+impl From<CodeMsg> for OutRets {
     fn from(v: CodeMsg) -> Self {
-        let mut res = OutResult::new();
+        let mut res = OutRets::new();
         res.set_code(v.code);
         res.set_msg(v.msg);
         res
     }
 }
 
-impl From<Any> for OutResult {
+impl From<Any> for OutRets {
     fn from(v: Any) -> Self {
-        let mut res = OutResult::new();
+        let mut res = OutRets::new();
         res.set_data(v);
         res
     }
 }
 
-impl<R: Message> From<Result<R>> for OutResult {
+impl<R: Message> From<Result<R>> for OutRets {
     fn from(v: Result<R>) -> Self {
         match v {
             Ok(data) => {
-                let mut res = OutResult::new();
+                let mut res = OutRets::new();
                 match pack_any(data) {
                     Ok(data) => {
                         res.set_data(data);
@@ -194,7 +194,7 @@ impl<R: Message> From<Result<R>> for OutResult {
     }
 }
 
-impl FromResidual<Option<Infallible>> for OutResult {
+impl FromResidual<Option<Infallible>> for OutRets {
     fn from_residual(_residual: Option<Infallible>) -> Self {
         ERR_CODE_NONE.to_code_msg("not found").into()
     }

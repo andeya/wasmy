@@ -55,7 +55,7 @@ pub fn set_handler(method: Method, hdl: VmHandler) {
 }
 
 #[allow(dead_code)]
-pub(crate) fn host_call(args_pb: &Vec<u8>) -> OutResult {
+pub(crate) fn host_call(args_pb: &Vec<u8>) -> OutRets {
     match InArgs::parse_from_bytes(&args_pb) {
         Ok(host_args) => {
             handle(host_args)
@@ -67,7 +67,7 @@ pub(crate) fn host_call(args_pb: &Vec<u8>) -> OutResult {
 }
 
 
-fn handle(args: InArgs) -> OutResult {
+fn handle(args: InArgs) -> OutRets {
     let res: Result<Any> = MUX.read().unwrap().get(&args.get_method())?(args.get_data());
     match res {
         Ok(a) => a.into(),

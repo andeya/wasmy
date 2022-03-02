@@ -237,7 +237,7 @@ impl ::protobuf::reflect::ProtobufValue for InArgs {
 
 #[derive(PartialEq,Clone,Default)]
 #[cfg_attr(feature = "with-serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct OutResult {
+pub struct OutRets {
     // message fields
     pub code: i32,
     pub msg: ::std::string::String,
@@ -249,14 +249,14 @@ pub struct OutResult {
     pub cached_size: ::protobuf::CachedSize,
 }
 
-impl<'a> ::std::default::Default for &'a OutResult {
-    fn default() -> &'a OutResult {
-        <OutResult as ::protobuf::Message>::default_instance()
+impl<'a> ::std::default::Default for &'a OutRets {
+    fn default() -> &'a OutRets {
+        <OutRets as ::protobuf::Message>::default_instance()
     }
 }
 
-impl OutResult {
-    pub fn new() -> OutResult {
+impl OutRets {
+    pub fn new() -> OutRets {
         ::std::default::Default::default()
     }
 
@@ -335,7 +335,7 @@ impl OutResult {
     }
 }
 
-impl ::protobuf::Message for OutResult {
+impl ::protobuf::Message for OutRets {
     fn is_initialized(&self) -> bool {
         for v in &self.data {
             if !v.is_initialized() {
@@ -431,8 +431,8 @@ impl ::protobuf::Message for OutResult {
         Self::descriptor_static()
     }
 
-    fn new() -> OutResult {
-        OutResult::new()
+    fn new() -> OutRets {
+        OutRets::new()
     }
 
     fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
@@ -441,34 +441,34 @@ impl ::protobuf::Message for OutResult {
             let mut fields = ::std::vec::Vec::new();
             fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeInt32>(
                 "code",
-                |m: &OutResult| { &m.code },
-                |m: &mut OutResult| { &mut m.code },
+                |m: &OutRets| { &m.code },
+                |m: &mut OutRets| { &mut m.code },
             ));
             fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
                 "msg",
-                |m: &OutResult| { &m.msg },
-                |m: &mut OutResult| { &mut m.msg },
+                |m: &OutRets| { &m.msg },
+                |m: &mut OutRets| { &mut m.msg },
             ));
             fields.push(::protobuf::reflect::accessor::make_singular_ptr_field_accessor::<_, ::protobuf::types::ProtobufTypeMessage<::protobuf::well_known_types::Any>>(
                 "data",
-                |m: &OutResult| { &m.data },
-                |m: &mut OutResult| { &mut m.data },
+                |m: &OutRets| { &m.data },
+                |m: &mut OutRets| { &mut m.data },
             ));
-            ::protobuf::reflect::MessageDescriptor::new_pb_name::<OutResult>(
-                "OutResult",
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<OutRets>(
+                "OutRets",
                 fields,
                 file_descriptor_proto()
             )
         })
     }
 
-    fn default_instance() -> &'static OutResult {
-        static instance: ::protobuf::rt::LazyV2<OutResult> = ::protobuf::rt::LazyV2::INIT;
-        instance.get(OutResult::new)
+    fn default_instance() -> &'static OutRets {
+        static instance: ::protobuf::rt::LazyV2<OutRets> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(OutRets::new)
     }
 }
 
-impl ::protobuf::Clear for OutResult {
+impl ::protobuf::Clear for OutRets {
     fn clear(&mut self) {
         self.code = 0;
         self.msg.clear();
@@ -477,13 +477,13 @@ impl ::protobuf::Clear for OutResult {
     }
 }
 
-impl ::std::fmt::Debug for OutResult {
+impl ::std::fmt::Debug for OutRets {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         ::protobuf::text_format::fmt(self, f)
     }
 }
 
-impl ::protobuf::reflect::ProtobufValue for OutResult {
+impl ::protobuf::reflect::ProtobufValue for OutRets {
     fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
         ::protobuf::reflect::ReflectValueRef::Message(self)
     }
@@ -611,7 +611,7 @@ impl ::protobuf::reflect::ProtobufValue for Empty {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\tabi.proto\x12\x03abi\x1a\x19google/protobuf/any.proto\"J\n\x06InArgs\
     \x12\x16\n\x06method\x18\x01\x20\x01(\x05R\x06method\x12(\n\x04data\x18\
-    \x02\x20\x01(\x0b2\x14.google.protobuf.AnyR\x04data\"[\n\tOutResult\x12\
+    \x02\x20\x01(\x0b2\x14.google.protobuf.AnyR\x04data\"Y\n\x07OutRets\x12\
     \x12\n\x04code\x18\x01\x20\x01(\x05R\x04code\x12\x10\n\x03msg\x18\x02\
     \x20\x01(\tR\x03msg\x12(\n\x04data\x18\x03\x20\x01(\x0b2\x14.google.prot\
     obuf.AnyR\x04data\"\x07\n\x05Emptyb\x06proto3\

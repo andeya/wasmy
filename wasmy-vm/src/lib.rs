@@ -9,6 +9,7 @@ mod handler;
 mod instance;
 mod entry;
 mod wasm_info;
+
 #[cfg(test)]
 mod tests {
     #[test]
