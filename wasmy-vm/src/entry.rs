@@ -17,6 +17,9 @@ impl WasmUri {
     pub fn into_caller(self) -> WasmCaller {
         WasmCaller(self)
     }
+    pub fn as_caller(&self) -> &WasmCaller {
+        unsafe { &*(self as *const WasmUri as *const WasmCaller) }
+    }
 }
 
 impl WasmCaller {
