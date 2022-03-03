@@ -47,7 +47,6 @@ impl InstanceEnv {
             let ptr = alloc(Layout::new::<Instance>()) as *mut Instance;
             InstanceEnv {
                 ptr,
-                // ptr: INSTANCES.read().unwrap().get(&key).unwrap() as *const Option<Instance>,
                 key,
             }
         }
