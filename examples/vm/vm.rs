@@ -18,7 +18,7 @@ struct Opt {
     wasm_path: PathBuf,
 }
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 20)]
+#[tokio::main(flavor = "multi_thread", worker_threads = 10)]
 async fn main() {
     println!("wasmy, easily customize my wasm app!");
     let mut opt: Opt = Opt::from_args();
@@ -33,7 +33,7 @@ async fn main() {
     let mut data = TestArgs::new();
     data.set_a(2);
     data.set_b(5);
-    for i in 1..=200 {
+    for i in 1..=1000 {
         let data = data.clone();
         let wasm_uri = wasm_uri.clone();
         tokio::spawn(async move {

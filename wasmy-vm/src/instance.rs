@@ -7,17 +7,15 @@ use std::thread::ThreadId;
 
 use anyhow::anyhow;
 use lazy_static;
-use wasmer::{Function, import_namespace, ImportObject, Memory, MemoryView, Module, Store, Type};
-use wasmer_compiler_cranelift::Cranelift;
-use wasmer_engine_universal::Universal;
+use wasmer::{Function, import_namespace, ImportObject, Memory, MemoryView, Module, WasmerEnv};
 use wasmer_wasi::WasiState;
 
+use crate::{modules, WasmUri};
 use crate::handler::*;
 use crate::wasm_info::WasmInfo;
-use crate::WasmUri;
 
 lazy_static::lazy_static! {
-    static ref INSTANCES: RwLock<HashMap<LocalInstanceKey, Instance>> = RwLock::new(HashMap::new());
+    static ref INSTANCES: RwLock<HashMap<LocalInstanceKey, Option<Instance>>> = RwLock::new(HashMap::new());
 }
 
 #[derive(Hash, Eq, PartialEq, Clone)]
@@ -27,14 +25,31 @@ struct LocalInstanceKey {
 }
 
 impl LocalInstanceKey {
-    fn from(wasm_uri: WasmUri, zero_thread: bool) -> LocalInstanceKey {
-        if zero_thread {
-            let zero: u64 = 0;
-            let tid = unsafe { &*(&zero as *const u64 as *const ThreadId) };
-            LocalInstanceKey { wasm_uri, thread_id: tid.clone() }
-        } else {
-            LocalInstanceKey { wasm_uri, thread_id: thread::current().id() }
+    fn from(wasm_uri: WasmUri) -> LocalInstanceKey {
+        LocalInstanceKey { wasm_uri, thread_id: thread::current().id() }
+    }
+}
+
+#[derive(Clone, WasmerEnv)]
+struct InstanceEnv {
+    key: LocalInstanceKey,
+    ptr: *const Option<Instance>,
+}
+
+unsafe impl Sync for InstanceEnv {}
+
+unsafe impl Send for InstanceEnv {}
+
+impl InstanceEnv {
+    fn from(key: LocalInstanceKey) -> InstanceEnv {
+        INSTANCES.write().unwrap().insert(key.clone(), None);
+        InstanceEnv {
+            ptr: INSTANCES.read().unwrap().get(&key).unwrap() as *const Option<Instance>,
+            key,
         }
+    }
+    fn as_instance(&self) -> &Option<Instance> {
+        unsafe { &*self.ptr }
     }
 }
 
@@ -42,7 +57,7 @@ pub(crate) fn load<B, W>(wasm_info: W) -> Result<WasmUri>
     where B: AsRef<[u8]>,
           W: WasmInfo<B>,
 {
-    let key = Instance::new_unlock(wasm_info)?;
+    let key = Instance::load_and_new_local(wasm_info)?;
     Ok(key.wasm_uri)
 }
 
@@ -50,13 +65,17 @@ pub(crate) fn load<B, W>(wasm_info: W) -> Result<WasmUri>
 pub(crate) fn with<F, R>(wasm_uri: WasmUri, callback: F) -> Result<R>
     where F: FnOnce(&Instance) -> Result<R>
 {
-    let key = LocalInstanceKey::from(wasm_uri, false);
-    if let Some(ins) = INSTANCES.read().unwrap().get(&key) {
-        return callback(ins)
+    let key = LocalInstanceKey::from(wasm_uri);
+    {
+        if let Some(Some(ins)) = INSTANCES.read().unwrap().get(&key) {
+            return callback(ins);
+        }
     }
-    let key = Instance::new_local_unlock(key.wasm_uri)?;
-    if let Some(ins) = INSTANCES.read().unwrap().get(&key) {
-        return callback(ins)
+    {
+        let key = Instance::new_local(key)?;
+        if let Some(Some(ins)) = INSTANCES.read().unwrap().get(&key) {
+            return callback(ins);
+        }
     }
     return ERR_CODE_NONE.to_result("not found vm instance by wasm_uri")
 }
@@ -74,105 +93,100 @@ unsafe impl Sync for Instance {}
 unsafe impl Send for Instance {}
 
 impl Instance {
-    fn new_unlock<B, W>(wasm_info: W) -> anyhow::Result<LocalInstanceKey>
-        where B: AsRef<[u8]>,
-              W: WasmInfo<B>,
-    {
-        let wasm_uri = wasm_info.wasm_uri();
-        Self::new0_unlock(wasm_info)?;
-        Self::new_local_unlock(wasm_uri)
-    }
-    fn new_local_unlock(wasm_uri: WasmUri) -> anyhow::Result<LocalInstanceKey> {
-        let inner = INSTANCES.read()
-                             .unwrap()
-                             .get(&LocalInstanceKey::from(wasm_uri.clone(), true))
-                             .unwrap()
-                             .instance
-                             .clone();
-        let key = LocalInstanceKey::from(wasm_uri, false);
-        let ins = Instance {
-            key: key.clone(),
-            instance: inner,
-            ctx_memory: RefCell::new(HashMap::with_capacity(1024)),
-            next_ctx_id: Cell::new(1),
-        };
-        INSTANCES.write().unwrap().insert(key.clone(), ins);
-        Ok(key)
-    }
-    fn new0_unlock<B, W>(wasm_info: W) -> anyhow::Result<()>
-        where B: AsRef<[u8]>,
-              W: WasmInfo<B>,
-    {
-        // collect and register handlers once
-        VmHandlerAPI::collect_and_register_once();
-        let wasm_uri = wasm_info.wasm_uri();
-
-        #[cfg(debug_assertions)] println!("compiling module, wasm_uri={}...", wasm_uri);
-        let store: Store = Store::new(&Universal::new(Cranelift::default()).engine());
-        let mut module = Module::new(&store, wasm_info.into_wasm_bytes()?)?;
-        module.set_name(wasm_uri.as_str());
-        #[cfg(debug_assertions)] println!("compiled module, wasm_uri={}...", wasm_uri);
-
-        for function in module.exports().functions() {
-            let name = function.name();
-            if name == WasmHandlerAPI::onload_symbol() {
-                let ty = function.ty();
-                if ty.params().len() > 0 || ty.results().len() > 0 {
-                    return Err(anyhow::Error::msg(format!("Incompatible Export Type: fn {}(){{}}", WasmHandlerAPI::onload_symbol())))
-                }
-                continue
-            }
-            WasmHandlerAPI::symbol_to_method(name).map_or_else(|| {
-                #[cfg(debug_assertions)]println!("module exports function(invalid for vm): {:?}", function);
-            }, |_method| {
-                let ty = function.ty();
-                if ty.results().len() == 0 && ty.params().eq(&[Type::I32, Type::I32]) {
-                    #[cfg(debug_assertions)]println!("module exports function(valid for vm): {:?}", function);
-                } else {
-                    #[cfg(debug_assertions)]println!("module exports function(invalid for vm): {:?}", function);
-                }
-            });
+    fn new_local(key: LocalInstanceKey) -> anyhow::Result<LocalInstanceKey> {
+        if let Some(module) = modules::MODULES.read().unwrap().get(&key.wasm_uri) {
+            Self::from_module(module, key)
+        } else {
+            Err(anyhow!("not found module"))
         }
+    }
 
-        let mut import_object = WasiState::new(&wasm_uri)
+    fn load_and_new_local<B, W>(wasm_info: W) -> anyhow::Result<LocalInstanceKey>
+        where B: AsRef<[u8]>,
+              W: WasmInfo<B>,
+    {
+        let wasm_uri = modules::load(wasm_info)?;
+        Self::from_module(
+            modules::MODULES.read().unwrap().get(&wasm_uri).as_ref().unwrap(),
+            LocalInstanceKey::from(wasm_uri),
+        )
+    }
+
+    fn from_module(module: &Module, key: LocalInstanceKey) -> anyhow::Result<LocalInstanceKey> {
+        let ins_env = InstanceEnv::from(key);
+
+        let import_object = Self::new_import_object(&module, &ins_env)?;
+
+        let instance = Instance {
+            key: ins_env.key.clone(),
+            instance: wasmer::Instance::new(&module, &import_object)?,
+            ctx_memory: RefCell::new(HashMap::with_capacity(1024)),
+            next_ctx_id: Cell::new(0),
+        };
+        #[cfg(debug_assertions)]println!("[{:?}] created instance: wasm_uri={}", ins_env.key.thread_id, ins_env.key.wasm_uri);
+
+        INSTANCES.write().unwrap().get_mut(&ins_env.key).unwrap().replace(instance);
+        // only call once
+        if let Err(e) = INSTANCES.read().unwrap().get(&ins_env.key).unwrap().as_ref().unwrap().init() {
+            INSTANCES.write().unwrap().remove(&ins_env.key);
+            return Err(e)
+        }
+        return Ok(ins_env.key)
+    }
+
+    fn new_import_object(module: &Module, ins_env: &InstanceEnv) -> anyhow::Result<ImportObject> {
+        let mut import_object = WasiState::new(&ins_env.key.wasm_uri)
             // First, we create the `WasiEnv` with the stdio pipes
             .finalize()?
             // Then, we get the import object related to our WASI
             // and attach it to the Wasm instance.
             .import_object(&module)?;
 
+        import_object.register("env", import_namespace!({
+            "_wasm_host_recall" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, ctx_id: i32, offset: i32| {
+                let key = &ins_env.key;
+                #[cfg(debug_assertions)] println!("[VM:{:?}]_wasm_host_recall: wasm_uri={}, ctx_id={}, offset={}", key.thread_id, key.wasm_uri, ctx_id, offset);
+                let ins = ins_env.as_instance().as_ref().unwrap();
+                let _ = ins.use_mut_buffer(ctx_id, 0, |data| {
+                    ins.set_view_bytes(offset as usize, data.iter());
+                    let len = data.len();
+                    unsafe { data.set_len(0) };
+                    len
+                });
+            }),
+            "_wasm_host_restore" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, ctx_id: i32, offset: i32, size: i32| {
+                let key = &ins_env.key;
+                #[cfg(debug_assertions)] println!("[VM:{:?}]_wasm_host_restore: wasm_uri={}, ctx_id={}, offset={}, size={}", key.thread_id, key.wasm_uri, ctx_id, offset, size);
+                let ins = ins_env.as_instance().as_ref().unwrap();
+                let _ = ins.use_mut_buffer(ctx_id, size as usize, |buffer|{
+                    ins.read_view_bytes(offset as usize, size as usize, buffer);
+                    buffer.len()
+                });
+            }),
+            "_wasm_host_call" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, ctx_id: i32, offset: i32, size: i32|-> i32 {
+                let key = &ins_env.key;
+                #[cfg(debug_assertions)] println!("[VM:{:?}]_wasm_host_call: wasm_uri={}, ctx_id={}, offset={}, size={}", key.thread_id, key.wasm_uri, ctx_id, offset, size);
+                let ins = ins_env.as_instance().as_ref().unwrap();
+                ins.use_mut_buffer(ctx_id, size as usize, |buffer| {
+                    ins.read_view_bytes(offset as usize, size as usize, buffer);
+                    write_to_vec(&host_call(buffer), buffer)
+                }) as i32
+            }),
+        }));
 
-        Self::register_import_object(&mut import_object, module.store(), &wasm_uri);
-
-        let key = LocalInstanceKey::from(wasm_uri, true);
-        let instance = Instance {
-            key: key.clone(),
-            instance: wasmer::Instance::new(&module, &import_object)?,
-            ctx_memory: RefCell::new(HashMap::with_capacity(1024)),
-            next_ctx_id: Cell::new(0),
-        };
-        #[cfg(debug_assertions)]println!("created instance: wasm_uri={}", key.wasm_uri);
-
-        INSTANCES.write().unwrap().insert(key.clone(), instance);
-        // only call once
-        if let Err(e) = INSTANCES.read().unwrap().get(&key).unwrap().init() {
-            INSTANCES.write().unwrap().remove(&key);
-            return Err(e)
-        }
-
-        Ok(())
+        Ok(import_object)
     }
 
     fn init(&self) -> anyhow::Result<()> {
         let ret = self.invoke_instance(WasmHandlerAPI::onload_symbol(), None).map_or_else(|e| {
             if e.code == ERR_CODE_NONE.value() {
-                #[cfg(debug_assertions)]println!("no need initialize instance: wasm_uri={}", self.key.wasm_uri);
+                #[cfg(debug_assertions)]println!("[{:?}]no need initialize instance: wasm_uri={}", self.key.thread_id, self.key.wasm_uri);
                 Ok(())
             } else {
                 Err(anyhow!("{}", e))
             }
         }, |_| {
-            #[cfg(debug_assertions)]println!("initialized instance: wasm_uri={}", self.key.wasm_uri);
+            #[cfg(debug_assertions)]println!("[{:?}]initialized instance: wasm_uri={}", self.key.thread_id, self.key.wasm_uri);
             Ok(())
         });
         self.next_ctx_id.set(1);
@@ -197,7 +211,6 @@ impl Instance {
         Ok(res)
     }
     pub(crate) fn invoke_instance(&self, sign_name: &str, args: Option<(i32, i32)>) -> Result<()> {
-        // return ERR_CODE_UNKNOWN.to_result("not found handler method in wasm");
         let exports = &self.instance.exports;
         loop {
             let ret = if let Some((ctx_id, size)) = args.clone() {
@@ -228,42 +241,6 @@ impl Instance {
                 return Ok(());
             }
         }
-    }
-    fn register_import_object(import_object: &mut ImportObject, store: &Store, wasm_uri: &WasmUri) {
-        import_object.register("env", import_namespace!({
-            "_wasm_host_recall" => Function::new_native_with_env(store, wasm_uri.clone(), |wasm_uri: &WasmUri, ctx_id: i32, offset: i32| {
-                let key = LocalInstanceKey::from(wasm_uri.clone(), ctx_id<=0);
-                #[cfg(debug_assertions)] println!("[VM:{:?}]_wasm_host_recall: wasm_uri={}, ctx_id={}, offset={}", key.thread_id, wasm_uri, ctx_id, offset);
-                let rlock = INSTANCES.read().unwrap();
-                let ins = rlock.get(&key).unwrap();
-                let _ = ins.use_mut_buffer(ctx_id, 0, |data| {
-                    ins.set_view_bytes(offset as usize, data.iter());
-                    let len = data.len();
-                    unsafe { data.set_len(0) };
-                    len
-                });
-            }),
-            "_wasm_host_restore" => Function::new_native_with_env(store, wasm_uri.clone(), |wasm_uri: &WasmUri, ctx_id: i32, offset: i32, size: i32| {
-                let key = LocalInstanceKey::from(wasm_uri.clone(), ctx_id<=0);
-                #[cfg(debug_assertions)] println!("[VM:{:?}]_wasm_host_restore: wasm_uri={}, ctx_id={}, offset={}, size={}", key.thread_id, wasm_uri, ctx_id, offset, size);
-                let rlock = INSTANCES.read().unwrap();
-                let ins = rlock.get(&key).unwrap();
-                let _ = ins.use_mut_buffer(ctx_id, size as usize, |buffer|{
-                    ins.read_view_bytes(offset as usize, size as usize, buffer);
-                    buffer.len()
-                });
-            }),
-            "_wasm_host_call" => Function::new_native_with_env(store, wasm_uri.clone(), |wasm_uri: &WasmUri, ctx_id: i32, offset: i32, size: i32|-> i32 {
-                let key = LocalInstanceKey::from(wasm_uri.clone(), ctx_id<=0);
-                #[cfg(debug_assertions)] println!("[VM:{:?}]_wasm_host_call: wasm_uri={}, ctx_id={}, offset={}, size={}", key.thread_id, wasm_uri, ctx_id, offset, size);
-                let rlock = INSTANCES.read().unwrap();
-                let ins = rlock.get(&key).unwrap();
-                ins.use_mut_buffer(ctx_id, size as usize, |buffer| {
-                    ins.read_view_bytes(offset as usize, size as usize, buffer);
-                    write_to_vec(&host_call(buffer), buffer)
-                }) as i32
-            }),
-        }));
     }
     fn borrow_mut_ctx_memory(&self) -> RefMut<HashMap<i32, Vec<u8>>> {
         self.ctx_memory.borrow_mut()
