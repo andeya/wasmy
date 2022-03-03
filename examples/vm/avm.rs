@@ -33,7 +33,7 @@ fn main() {
     let wasm_path = PathBuf::from(env::args().next().unwrap()).parent().unwrap().join(opt.wasm_path);
     println!("wasm file path: {:?}", wasm_path);
 
-    let wasm_uri = load_wasm(wasm_path).unwrap();
+    let wasm_caller = load_wasm(wasm_path).unwrap();
     let mut data = TestArgs::new();
     data.set_a(2);
     data.set_b(5);
@@ -54,10 +54,10 @@ fn main() {
         .block_on(async {
             for _ in 1..=thread_num {
                 let data = data.clone();
-                let wasm_uri = wasm_uri.clone();
+                let wasm_caller = wasm_caller.clone();
                 tokio::spawn(async move {
                     for i in 1..=number {
-                        let res: TestResult = wasm_uri.call_wasm(0, data.clone()).unwrap();
+                        let res: TestResult = wasm_caller.call(0, data.clone()).unwrap();
                         println!("NO.{}: {}+{}={}", i, data.get_a(), data.get_b(), res.get_c());
                     }
                 });
