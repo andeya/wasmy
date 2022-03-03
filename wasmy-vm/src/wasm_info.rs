@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use wasmer::WasmerEnv;
 
-#[derive(Clone, WasmerEnv, Hash, Eq, PartialEq)]
+#[derive(Clone, WasmerEnv, Hash, Eq, PartialEq, Debug)]
 pub struct WasmUri(String);
 
 impl Deref for WasmUri {

@@ -1,7 +1,8 @@
-use std::{env, thread};
+use std::env;
 use std::path::PathBuf;
 
 use structopt::StructOpt;
+use tokio;
 
 use wasmy_vm::*;
 
@@ -37,32 +38,31 @@ fn main() {
     data.set_a(2);
     data.set_b(5);
 
-    fn call(count: usize, data: TestArgs, wasm_uri: WasmUri) {
-        for i in 1..=count {
-            let res: TestResult = wasm_uri.call_wasm(0, data.clone()).unwrap();
-            println!("NO.{}: {}+{}={}", i, data.get_a(), data.get_b(), res.get_c());
-        }
-    }
-
-    let mut hdls = vec![];
+    let thread_num = opt
+        .thread_num
+        .and_then(|c| Some(if c == 0 { 1 } else { c }))
+        .unwrap_or(1);
     let number = opt.number
                     .and_then(|c| Some(if c == 0 { 1 } else { c }))
                     .unwrap_or(1);
 
-    for _ in 1..=opt
-        .thread_num
-        .and_then(|c| Some(if c == 0 { 1 } else { c }))
-        .unwrap_or(1)
-    {
-        let data = data.clone();
-        let wasm_uri = wasm_uri.clone();
-        hdls.push(thread::spawn(move || {
-            call(number, data, wasm_uri)
-        }))
-    }
-    for h in hdls {
-        let _ = h.join();
-    }
+    tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(thread_num)
+        .enable_all()
+        .build()
+        .unwrap()
+        .block_on(async {
+            for _ in 1..=thread_num {
+                let data = data.clone();
+                let wasm_uri = wasm_uri.clone();
+                tokio::spawn(async move {
+                    for i in 1..=number {
+                        let res: TestResult = wasm_uri.call_wasm(0, data.clone()).unwrap();
+                        println!("NO.{}: {}+{}={}", i, data.get_a(), data.get_b(), res.get_c());
+                    }
+                });
+            }
+        });
 }
 
 

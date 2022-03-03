@@ -1,9 +1,11 @@
+use std::collections::HashMap;
+use std::sync::RwLock;
+
 use lazy_static;
 use wasmer::{Module, Store, Type};
 use wasmer_compiler_cranelift::Cranelift;
 use wasmer_engine_universal::Universal;
-use std::sync::RwLock;
-use std::collections::HashMap;
+
 use wasmy_abi::WasmHandlerAPI;
 
 use crate::{VmHandlerAPI, WasmInfo, WasmUri};
@@ -24,7 +26,6 @@ pub(crate) fn load<B, W>(wasm_info: W) -> anyhow::Result<WasmUri>
     let store: Store = Store::new(&Universal::new(Cranelift::default()).engine());
     let mut module = Module::new(&store, wasm_info.into_wasm_bytes()?)?;
     module.set_name(wasm_uri.as_str());
-    #[cfg(debug_assertions)] println!("compiled module, wasm_uri={}...", wasm_uri);
 
     for function in module.exports().functions() {
         let name = function.name();
@@ -48,5 +49,8 @@ pub(crate) fn load<B, W>(wasm_info: W) -> anyhow::Result<WasmUri>
     }
 
     MODULES.write().unwrap().insert(wasm_uri.clone(), module);
+
+    #[cfg(debug_assertions)] println!("loaded module, wasm_uri={}", wasm_uri);
+
     Ok(wasm_uri.clone())
 }

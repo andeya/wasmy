@@ -1,4 +1,5 @@
 use core::ops::FnOnce;
+use std::alloc::{alloc, Layout};
 use std::cell::{Cell, RefCell, RefMut};
 use std::collections::HashMap;
 use std::sync::RwLock;
@@ -15,10 +16,10 @@ use crate::handler::*;
 use crate::wasm_info::WasmInfo;
 
 lazy_static::lazy_static! {
-    static ref INSTANCES: RwLock<HashMap<LocalInstanceKey, Option<Instance>>> = RwLock::new(HashMap::new());
+    static ref INSTANCES: RwLock<HashMap<LocalInstanceKey, Box<Instance>>> = RwLock::new(HashMap::new());
 }
 
-#[derive(Hash, Eq, PartialEq, Clone)]
+#[derive(Hash, Eq, PartialEq, Clone, Debug)]
 struct LocalInstanceKey {
     wasm_uri: WasmUri,
     thread_id: ThreadId,
@@ -30,10 +31,10 @@ impl LocalInstanceKey {
     }
 }
 
-#[derive(Clone, WasmerEnv)]
+#[derive(Clone, WasmerEnv, Debug)]
 struct InstanceEnv {
     key: LocalInstanceKey,
-    ptr: *const Option<Instance>,
+    ptr: *mut Instance,
 }
 
 unsafe impl Sync for InstanceEnv {}
@@ -42,13 +43,22 @@ unsafe impl Send for InstanceEnv {}
 
 impl InstanceEnv {
     fn from(key: LocalInstanceKey) -> InstanceEnv {
-        INSTANCES.write().unwrap().insert(key.clone(), None);
-        InstanceEnv {
-            ptr: INSTANCES.read().unwrap().get(&key).unwrap() as *const Option<Instance>,
-            key,
+        unsafe {
+            let ptr = alloc(Layout::new::<Instance>()) as *mut Instance;
+            InstanceEnv {
+                ptr,
+                // ptr: INSTANCES.read().unwrap().get(&key).unwrap() as *const Option<Instance>,
+                key,
+            }
         }
     }
-    fn as_instance(&self) -> &Option<Instance> {
+    fn init_instance(&self, instance: Instance) {
+        unsafe {
+            self.ptr.write(instance);
+            INSTANCES.write().unwrap().insert(self.key.clone(), Box::from_raw(self.ptr));
+        }
+    }
+    fn as_instance(&self) -> &Instance {
         unsafe { &*self.ptr }
     }
 }
@@ -57,8 +67,8 @@ pub(crate) fn load<B, W>(wasm_info: W) -> Result<WasmUri>
     where B: AsRef<[u8]>,
           W: WasmInfo<B>,
 {
-    let key = Instance::load_and_new_local(wasm_info)?;
-    Ok(key.wasm_uri)
+    let ins = Instance::load_and_new_local(wasm_info)?;
+    Ok(ins.key.wasm_uri.clone())
 }
 
 
@@ -67,20 +77,15 @@ pub(crate) fn with<F, R>(wasm_uri: WasmUri, callback: F) -> Result<R>
 {
     let key = LocalInstanceKey::from(wasm_uri);
     {
-        if let Some(Some(ins)) = INSTANCES.read().unwrap().get(&key) {
+        if let Some(ins) = INSTANCES.read().unwrap().get(&key) {
             return callback(ins);
         }
     }
-    {
-        let key = Instance::new_local(key)?;
-        if let Some(Some(ins)) = INSTANCES.read().unwrap().get(&key) {
-            return callback(ins);
-        }
-    }
-    return ERR_CODE_NONE.to_result("not found vm instance by wasm_uri")
+    return callback(Instance::new_local(key)?.as_instance());
+    // return ERR_CODE_NONE.to_result("not found vm instance by wasm_uri")
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct Instance {
     key: LocalInstanceKey,
     instance: wasmer::Instance,
@@ -93,7 +98,7 @@ unsafe impl Sync for Instance {}
 unsafe impl Send for Instance {}
 
 impl Instance {
-    fn new_local(key: LocalInstanceKey) -> anyhow::Result<LocalInstanceKey> {
+    fn new_local(key: LocalInstanceKey) -> anyhow::Result<InstanceEnv> {
         if let Some(module) = modules::MODULES.read().unwrap().get(&key.wasm_uri) {
             Self::from_module(module, key)
         } else {
@@ -101,7 +106,7 @@ impl Instance {
         }
     }
 
-    fn load_and_new_local<B, W>(wasm_info: W) -> anyhow::Result<LocalInstanceKey>
+    fn load_and_new_local<B, W>(wasm_info: W) -> anyhow::Result<InstanceEnv>
         where B: AsRef<[u8]>,
               W: WasmInfo<B>,
     {
@@ -112,7 +117,7 @@ impl Instance {
         )
     }
 
-    fn from_module(module: &Module, key: LocalInstanceKey) -> anyhow::Result<LocalInstanceKey> {
+    fn from_module(module: &Module, key: LocalInstanceKey) -> anyhow::Result<InstanceEnv> {
         let ins_env = InstanceEnv::from(key);
 
         let import_object = Self::new_import_object(&module, &ins_env)?;
@@ -125,13 +130,14 @@ impl Instance {
         };
         #[cfg(debug_assertions)]println!("[{:?}] created instance: wasm_uri={}", ins_env.key.thread_id, ins_env.key.wasm_uri);
 
-        INSTANCES.write().unwrap().get_mut(&ins_env.key).unwrap().replace(instance);
+        ins_env.init_instance(instance);
+
         // only call once
-        if let Err(e) = INSTANCES.read().unwrap().get(&ins_env.key).unwrap().as_ref().unwrap().init() {
+        if let Err(e) = ins_env.as_instance().init() {
             INSTANCES.write().unwrap().remove(&ins_env.key);
-            return Err(e)
+            return Err(e);
         }
-        return Ok(ins_env.key)
+        return Ok(ins_env)
     }
 
     fn new_import_object(module: &Module, ins_env: &InstanceEnv) -> anyhow::Result<ImportObject> {
@@ -146,7 +152,7 @@ impl Instance {
             "_wasm_host_recall" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, ctx_id: i32, offset: i32| {
                 let key = &ins_env.key;
                 #[cfg(debug_assertions)] println!("[VM:{:?}]_wasm_host_recall: wasm_uri={}, ctx_id={}, offset={}", key.thread_id, key.wasm_uri, ctx_id, offset);
-                let ins = ins_env.as_instance().as_ref().unwrap();
+                let ins = ins_env.as_instance();
                 let _ = ins.use_mut_buffer(ctx_id, 0, |data| {
                     ins.set_view_bytes(offset as usize, data.iter());
                     let len = data.len();
@@ -157,7 +163,7 @@ impl Instance {
             "_wasm_host_restore" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, ctx_id: i32, offset: i32, size: i32| {
                 let key = &ins_env.key;
                 #[cfg(debug_assertions)] println!("[VM:{:?}]_wasm_host_restore: wasm_uri={}, ctx_id={}, offset={}, size={}", key.thread_id, key.wasm_uri, ctx_id, offset, size);
-                let ins = ins_env.as_instance().as_ref().unwrap();
+                let ins = ins_env.as_instance();
                 let _ = ins.use_mut_buffer(ctx_id, size as usize, |buffer|{
                     ins.read_view_bytes(offset as usize, size as usize, buffer);
                     buffer.len()
@@ -166,7 +172,7 @@ impl Instance {
             "_wasm_host_call" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, ctx_id: i32, offset: i32, size: i32|-> i32 {
                 let key = &ins_env.key;
                 #[cfg(debug_assertions)] println!("[VM:{:?}]_wasm_host_call: wasm_uri={}, ctx_id={}, offset={}, size={}", key.thread_id, key.wasm_uri, ctx_id, offset, size);
-                let ins = ins_env.as_instance().as_ref().unwrap();
+                let ins = ins_env.as_instance();
                 ins.use_mut_buffer(ctx_id, size as usize, |buffer| {
                     ins.read_view_bytes(offset as usize, size as usize, buffer);
                     write_to_vec(&host_call(buffer), buffer)
