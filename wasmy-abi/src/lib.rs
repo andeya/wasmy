@@ -17,10 +17,10 @@ impl WasmHandlerAPI {
     pub const fn onload_symbol() -> &'static str {
         "_wasm_onload"
     }
-    pub fn method_to_symbol(method: Method) -> String {
+    pub fn method_to_symbol(method: WasmMethod) -> String {
         format!("_wasm_handle_{}", method)
     }
-    pub fn symbol_to_method(symbol: &str) -> Option<Method> {
+    pub fn symbol_to_method(symbol: &str) -> Option<WasmMethod> {
         symbol.rsplit(|r| r == '_').next().and_then(|s| s.parse().ok())
     }
 }

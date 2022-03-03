@@ -57,8 +57,8 @@ fn main() {
                 let wasm_caller = wasm_caller.clone();
                 tokio::spawn(async move {
                     for i in 1..=number {
-                        let res: TestRets = wasm_caller.call(0, data.clone()).unwrap();
-                        println!("NO.{}: {}+{}={}", i, data.get_a(), data.get_b(), res.get_c());
+                        let rets: TestRets = wasm_caller.call(0, data.clone()).unwrap();
+                        println!("NO.{}: {}+{}={}", i, data.get_a(), data.get_b(), rets.get_c());
                     }
                 });
             }
@@ -68,9 +68,9 @@ fn main() {
 
 #[vm_handle(0)]
 fn add(args: TestArgs) -> Result<TestRets> {
-    let mut res = TestRets::new();
-    res.set_c(args.a + args.b);
-    Ok(res)
+    let mut rets = TestRets::new();
+    rets.set_c(args.a + args.b);
+    Ok(rets)
 }
 
 
@@ -78,9 +78,9 @@ fn add(args: TestArgs) -> Result<TestRets> {
 //
 // fn add(args: TestArgs) -> Result<TestRets>
 // {
-//     let mut res = TestRets::new();
-//     res.set_c(args.a + args.b);
-//     Ok(res)
+//     let mut rets = TestRets::new();
+//     rets.set_c(args.a + args.b);
+//     Ok(rets)
 // }
 //
 // #[allow(redundant_semicolons)]

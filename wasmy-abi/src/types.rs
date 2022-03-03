@@ -9,6 +9,8 @@ pub use protobuf::well_known_types::Any;
 use crate::abi::*;
 
 pub type Method = i32;
+pub type WasmMethod = Method;
+pub type VmMethod = Method;
 pub type CtxID = i32;
 pub type Result<Data> = std::result::Result<Data, CodeMsg>;
 

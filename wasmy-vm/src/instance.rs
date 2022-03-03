@@ -148,9 +148,9 @@ impl Instance {
             .import_object(&module)?;
 
         import_object.register("env", import_namespace!({
-            "_wasm_host_recall" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, ctx_id: i32, offset: i32| {
+            "_vm_recall" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, ctx_id: i32, offset: i32| {
                 let key = &ins_env.key;
-                #[cfg(debug_assertions)] println!("[VM:{:?}]_wasm_host_recall: wasm_uri={}, ctx_id={}, offset={}", key.thread_id, key.wasm_uri, ctx_id, offset);
+                #[cfg(debug_assertions)] println!("[VM:{:?}]_vm_recall: wasm_uri={}, ctx_id={}, offset={}", key.thread_id, key.wasm_uri, ctx_id, offset);
                 let ins = ins_env.as_instance();
                 let _ = ins.use_mut_buffer(ctx_id, 0, |data| {
                     ins.set_view_bytes(offset as usize, data.iter());
@@ -159,22 +159,22 @@ impl Instance {
                     len
                 });
             }),
-            "_wasm_host_restore" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, ctx_id: i32, offset: i32, size: i32| {
+            "_vm_restore" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, ctx_id: i32, offset: i32, size: i32| {
                 let key = &ins_env.key;
-                #[cfg(debug_assertions)] println!("[VM:{:?}]_wasm_host_restore: wasm_uri={}, ctx_id={}, offset={}, size={}", key.thread_id, key.wasm_uri, ctx_id, offset, size);
+                #[cfg(debug_assertions)] println!("[VM:{:?}]_vm_restore: wasm_uri={}, ctx_id={}, offset={}, size={}", key.thread_id, key.wasm_uri, ctx_id, offset, size);
                 let ins = ins_env.as_instance();
                 let _ = ins.use_mut_buffer(ctx_id, size as usize, |buffer|{
                     ins.read_view_bytes(offset as usize, size as usize, buffer);
                     buffer.len()
                 });
             }),
-            "_wasm_host_call" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, ctx_id: i32, offset: i32, size: i32|-> i32 {
+            "_vm_invoke" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, ctx_id: i32, offset: i32, size: i32|-> i32 {
                 let key = &ins_env.key;
-                #[cfg(debug_assertions)] println!("[VM:{:?}]_wasm_host_call: wasm_uri={}, ctx_id={}, offset={}, size={}", key.thread_id, key.wasm_uri, ctx_id, offset, size);
+                #[cfg(debug_assertions)] println!("[VM:{:?}]_vm_invoke: wasm_uri={}, ctx_id={}, offset={}, size={}", key.thread_id, key.wasm_uri, ctx_id, offset, size);
                 let ins = ins_env.as_instance();
                 ins.use_mut_buffer(ctx_id, size as usize, |buffer| {
                     ins.read_view_bytes(offset as usize, size as usize, buffer);
-                    write_to_vec(&host_call(buffer), buffer)
+                    write_to_vec(&vm_invoke(buffer), buffer)
                 }) as i32
             }),
         }));

@@ -55,10 +55,10 @@ pub fn set_handler(method: Method, hdl: VmHandler) {
 }
 
 #[allow(dead_code)]
-pub(crate) fn host_call(args_pb: &Vec<u8>) -> OutRets {
+pub(crate) fn vm_invoke(args_pb: &Vec<u8>) -> OutRets {
     match InArgs::parse_from_bytes(&args_pb) {
-        Ok(host_args) => {
-            handle(host_args)
+        Ok(vm_args) => {
+            handle(vm_args)
         }
         Err(err) => {
             ERR_CODE_PROTO.to_code_msg(err).into()
