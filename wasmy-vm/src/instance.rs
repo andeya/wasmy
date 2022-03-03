@@ -13,7 +13,7 @@ use wasmer_wasi::WasiState;
 
 use crate::{modules, WasmUri};
 use crate::handler::*;
-use crate::wasm_info::WasmInfo;
+use crate::wasm_file::WasmFile;
 
 lazy_static::lazy_static! {
     static ref INSTANCES: RwLock<HashMap<LocalInstanceKey, Box<Instance>>> = RwLock::new(HashMap::new());
@@ -62,11 +62,11 @@ impl InstanceEnv {
     }
 }
 
-pub(crate) fn load<B, W>(wasm_info: W) -> Result<WasmUri>
+pub(crate) fn load<B, W>(wasm_file: W) -> Result<WasmUri>
     where B: AsRef<[u8]>,
-          W: WasmInfo<B>,
+          W: WasmFile<B>,
 {
-    let ins = Instance::load_and_new_local(wasm_info)?;
+    let ins = Instance::load_and_new_local(wasm_file)?;
     Ok(ins.key.wasm_uri.clone())
 }
 
@@ -105,11 +105,11 @@ impl Instance {
         }
     }
 
-    fn load_and_new_local<B, W>(wasm_info: W) -> anyhow::Result<InstanceEnv>
+    fn load_and_new_local<B, W>(wasm_file: W) -> anyhow::Result<InstanceEnv>
         where B: AsRef<[u8]>,
-              W: WasmInfo<B>,
+              W: WasmFile<B>,
     {
-        let wasm_uri = modules::load(wasm_info)?;
+        let wasm_uri = modules::load(wasm_file)?;
         Self::from_module(
             modules::MODULES.read().unwrap().get(&wasm_uri).as_ref().unwrap(),
             LocalInstanceKey::from(wasm_uri),

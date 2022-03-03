@@ -2,13 +2,13 @@
 
 pub use entry::*;
 pub use handler::*;
-pub use wasm_info::*;
+pub use wasm_file::*;
 pub use wasmy_abi::*;
 
 mod handler;
 mod instance;
 mod entry;
-mod wasm_info;
+mod wasm_file;
 mod modules;
 
 #[cfg(test)]

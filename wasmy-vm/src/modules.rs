@@ -8,23 +8,23 @@ use wasmer_engine_universal::Universal;
 
 use wasmy_abi::WasmHandlerAPI;
 
-use crate::{VmHandlerAPI, WasmInfo, WasmUri};
+use crate::{VmHandlerAPI, WasmFile, WasmUri};
 
 lazy_static::lazy_static! {
    pub(crate) static ref MODULES: RwLock<HashMap<WasmUri, Module>> = RwLock::new(HashMap::new());
 }
 
-pub(crate) fn load<B, W>(wasm_info: W) -> anyhow::Result<WasmUri>
+pub(crate) fn load<B, W>(wasm_file: W) -> anyhow::Result<WasmUri>
     where B: AsRef<[u8]>,
-          W: WasmInfo<B>,
+          W: WasmFile<B>,
 {
     // collect and register handlers once
     VmHandlerAPI::collect_and_register_once();
-    let wasm_uri = wasm_info.wasm_uri();
+    let (wasm_uri, bytes) = wasm_file.into_parts()?;
 
     #[cfg(debug_assertions)] println!("compiling module, wasm_uri={}...", wasm_uri);
     let store: Store = Store::new(&Universal::new(Cranelift::default()).engine());
-    let mut module = Module::new(&store, wasm_info.into_wasm_bytes()?)?;
+    let mut module = Module::new(&store, bytes)?;
     module.set_name(wasm_uri.as_str());
 
     for function in module.exports().functions() {

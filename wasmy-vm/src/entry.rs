@@ -1,13 +1,13 @@
 use wasmy_abi::*;
 
 use crate::{instance, WasmUri};
-use crate::wasm_info::WasmInfo;
+use crate::wasm_file::WasmFile;
 
-pub fn load_wasm<B, W>(wasm_info: W) -> Result<WasmCaller>
+pub fn load_wasm<B, W>(wasm_file: W) -> Result<WasmCaller>
     where B: AsRef<[u8]>,
-          W: WasmInfo<B>,
+          W: WasmFile<B>,
 {
-    Ok(WasmCaller(instance::load(wasm_info)?))
+    Ok(WasmCaller(instance::load(wasm_file)?))
 }
 
 #[derive(Clone, Hash, Eq, PartialEq, Debug)]
