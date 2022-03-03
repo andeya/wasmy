@@ -11,20 +11,20 @@ use crate::abi::*;
 pub type Method = i32;
 pub type WasmMethod = Method;
 pub type VmMethod = Method;
-pub type CtxID = i32;
+pub type CtxId = i32;
 pub type Result<Data> = std::result::Result<Data, CodeMsg>;
 
 #[derive(Debug, Copy, Clone)]
-pub struct Ctx {
-    id: CtxID,
+pub struct WasmCtx {
+    id: CtxId,
 }
 
-impl Ctx {
-    pub(crate) fn get_id(&self) -> CtxID {
+impl WasmCtx {
+    pub(crate) fn id(&self) -> CtxId {
         self.id
     }
-    pub(crate) fn from_id(id: CtxID) -> Ctx {
-        Ctx { id }
+    pub(crate) fn from_id(id: CtxId) -> WasmCtx {
+        WasmCtx { id }
     }
 }
 

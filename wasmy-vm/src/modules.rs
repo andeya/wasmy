@@ -6,9 +6,9 @@ use wasmer::{Module, Store, Type};
 use wasmer_compiler_cranelift::Cranelift;
 use wasmer_engine_universal::Universal;
 
-use wasmy_abi::WasmHandlerAPI;
+use wasmy_abi::WasmHandlerApi;
 
-use crate::{VmHandlerAPI, WasmFile, WasmUri};
+use crate::{VmHandlerApi, WasmFile, WasmUri};
 
 lazy_static::lazy_static! {
    pub(crate) static ref MODULES: RwLock<HashMap<WasmUri, Module>> = RwLock::new(HashMap::new());
@@ -19,7 +19,7 @@ pub(crate) fn load<B, W>(wasm_file: W) -> anyhow::Result<WasmUri>
           W: WasmFile<B>,
 {
     // collect and register handlers once
-    VmHandlerAPI::collect_and_register_once();
+    VmHandlerApi::collect_and_register_once();
     let (wasm_uri, bytes) = wasm_file.into_parts()?;
 
     #[cfg(debug_assertions)] println!("compiling module, wasm_uri={}...", wasm_uri);
@@ -29,14 +29,14 @@ pub(crate) fn load<B, W>(wasm_file: W) -> anyhow::Result<WasmUri>
 
     for function in module.exports().functions() {
         let name = function.name();
-        if name == WasmHandlerAPI::onload_symbol() {
+        if name == WasmHandlerApi::onload_symbol() {
             let ty = function.ty();
             if ty.params().len() > 0 || ty.results().len() > 0 {
-                return Err(anyhow::Error::msg(format!("Incompatible Export Type: fn {}(){{}}", WasmHandlerAPI::onload_symbol())));
+                return Err(anyhow::Error::msg(format!("Incompatible Export Type: fn {}(){{}}", WasmHandlerApi::onload_symbol())));
             }
             continue;
         }
-        WasmHandlerAPI::symbol_to_method(name).map_or_else(|| {
+        WasmHandlerApi::symbol_to_method(name).map_or_else(|| {
             #[cfg(debug_assertions)]println!("module exports function(invalid for vm): {:?}", function);
         }, |_method| {
             let ty = function.ty();

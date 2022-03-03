@@ -11,9 +11,9 @@ pub mod types;
 pub mod test;
 mod wasm;
 
-pub struct WasmHandlerAPI();
+pub struct WasmHandlerApi();
 
-impl WasmHandlerAPI {
+impl WasmHandlerApi {
     pub const fn onload_symbol() -> &'static str {
         "_wasm_onload"
     }
@@ -27,17 +27,17 @@ impl WasmHandlerAPI {
 
 #[cfg(test)]
 mod tests {
-    use crate::WasmHandlerAPI;
+    use crate::WasmHandlerApi;
 
     #[test]
     fn method_to_symbol() {
-        let method = WasmHandlerAPI::method_to_symbol(10);
+        let method = WasmHandlerApi::method_to_symbol(10);
         assert_eq!(method, "_wasm_handle_10");
     }
 
     #[test]
     fn symbol_to_method() {
-        let method = WasmHandlerAPI::symbol_to_method("_wasm_handle_10");
+        let method = WasmHandlerApi::symbol_to_method("_wasm_handle_10");
         assert_eq!(method, Some(10));
     }
 }

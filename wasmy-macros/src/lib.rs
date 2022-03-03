@@ -27,10 +27,10 @@ pub fn vm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
 
         #[allow(redundant_semicolons)]
         fn #new_ident(args: &::wasmy_vm::Any) -> ::wasmy_vm::Result<::wasmy_vm::Any> {
-            #raw_ident(::wasmy_vm::VmHandlerAPI::unpack_any(args)?).and_then(|res|::wasmy_vm::VmHandlerAPI::pack_any(res))
+            #raw_ident(::wasmy_vm::VmHandlerApi::unpack_any(args)?).and_then(|res|::wasmy_vm::VmHandlerApi::pack_any(res))
         }
         ::wasmy_vm::submit_handler!{
-           ::wasmy_vm::VmHandlerAPI::new(#method, #new_ident)
+           ::wasmy_vm::VmHandlerApi::new(#method, #new_ident)
         }
     };
     #[cfg(debug_assertions)] println!("{}", new_item);
@@ -43,7 +43,7 @@ pub fn vm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
 /// example:
 /// ```
 /// #[wasm_handle(123)]
-/// fn xxx<A: wasmy_abi::Message, R: wasmy_abi::Message>(ctx: wasmy_abi::Ctx, args: A) -> wasmy_abi::Result<R> {todo!()}
+/// fn xxx<A: wasmy_abi::Message, R: wasmy_abi::Message>(ctx: wasmy_abi::WasmCtx, args: A) -> wasmy_abi::Result<R> {todo!()}
 /// ```
 /// command to check expanded code: `cargo +nightly rustc -- -Zunstable-options --pretty=expanded`
 #[proc_macro_attribute]
@@ -77,7 +77,7 @@ pub fn wasm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
 fn wasm_gen_inner(inner_ident: Ident, raw_ident: Ident) -> proc_macro2::TokenStream {
     quote! {
         #[inline]
-        fn #inner_ident(ctx: ::wasmy_abi::Ctx, args: ::wasmy_abi::InArgs) -> ::wasmy_abi::Result<::wasmy_abi::Any> {
+        fn #inner_ident(ctx: ::wasmy_abi::WasmCtx, args: ::wasmy_abi::InArgs) -> ::wasmy_abi::Result<::wasmy_abi::Any> {
            ::wasmy_abi::pack_any(#raw_ident(ctx, args.get_args()?)?)
         }
     }

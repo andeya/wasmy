@@ -183,7 +183,7 @@ impl Instance {
     }
 
     fn init(&self) -> anyhow::Result<()> {
-        let ret = self.invoke_instance(WasmHandlerAPI::onload_symbol(), None).map_or_else(|e| {
+        let ret = self.invoke_instance(WasmHandlerApi::onload_symbol(), None).map_or_else(|e| {
             if e.code == ERR_CODE_NONE.value() {
                 #[cfg(debug_assertions)]println!("[{:?}]no need initialize instance: wasm_uri={}", self.key.thread_id, self.key.wasm_uri);
                 Ok(())
@@ -204,7 +204,7 @@ impl Instance {
         let buffer_len = self.use_mut_buffer(ctx_id, in_args.compute_size() as usize, |buffer| {
             write_to_with_cached_sizes(&in_args, buffer)
         });
-        let sign_name = WasmHandlerAPI::method_to_symbol(method);
+        let sign_name = WasmHandlerApi::method_to_symbol(method);
         self.invoke_instance(&sign_name, Some((ctx_id, buffer_len as i32)))?;
         let buffer = self.take_buffer(ctx_id).unwrap_or(vec![]);
         let res = if buffer.len() > 0 {

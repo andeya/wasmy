@@ -19,7 +19,7 @@ fn init() {
 }
 
 #[wasm_handle(0)]
-fn multiply(ctx: Ctx, args: TestArgs) -> Result<TestRets> {
+fn multiply(ctx: WasmCtx, args: TestArgs) -> Result<TestRets> {
     let rid = random::<u8>() as i32;
     unsafe {
         STATE += 1;
@@ -31,9 +31,9 @@ fn multiply(ctx: Ctx, args: TestArgs) -> Result<TestRets> {
     let vm_rets: TestRets = ctx.call_vm(0, vm_args)?;
     println!("[Wasm-Simple({})] call vm method({}): args={{{:?}}}, rets={}", rid, 0, vm_rets, vm_rets.get_c());
 
-    let mut res = TestRets::new();
-    res.set_c(args.a * args.b);
-    Ok(res)
+    let mut rets = TestRets::new();
+    rets.set_c(args.a * args.b);
+    Ok(rets)
 }
 
 
@@ -58,7 +58,7 @@ fn multiply(ctx: Ctx, args: TestArgs) -> Result<TestRets> {
 //     init();
 // }
 //
-// fn multiply(ctx: Ctx, args: TestArgs) -> Result<TestRets>
+// fn multiply(ctx: WasmCtx, args: TestArgs) -> Result<TestRets>
 // {
 //     let rid = random::<u8>() as i32;
 //     unsafe
@@ -74,9 +74,9 @@ fn multiply(ctx: Ctx, args: TestArgs) -> Result<TestRets> {
 //     let vm_rets: TestRets = ctx.call_vm(0, vm_args)?;
 //     println!("[Wasm-Simple({})] call vm method({}): args={{{:?}}}, rets={}", rid, 0,
 //              vm_rets, vm_rets.get_c());
-//     let mut res = TestRets::new();
-//     res.set_c(args.a * args.b);
-//     Ok(res)
+//     let mut rets = TestRets::new();
+//     rets.set_c(args.a * args.b);
+//     Ok(rets)
 // }
 //
 // #[allow(redundant_semicolons)]
@@ -87,11 +87,12 @@ fn multiply(ctx: Ctx, args: TestArgs) -> Result<TestRets> {
 // {
 //     #[inline]
 //     fn
-//     _inner(ctx: ::wasmy_abi::Ctx, args: ::wasmy_abi::InArgs) -> ::
+//     _inner(ctx: ::wasmy_abi::WasmCtx, args: ::wasmy_abi::InArgs) -> ::
 //     wasmy_abi::Result<::wasmy_abi::Any>
 //     { ::wasmy_abi::pack_any(multiply(ctx, args.get_args()?)?) }
 //     ;
 //     ::
 //     wasmy_abi::wasm_handle(ctx_id, size, _inner)
 // }
+
 

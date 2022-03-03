@@ -9,16 +9,16 @@ pub use wasmy_macros::vm_handle;
 
 pub type VmHandler = fn(&Any) -> Result<Any>;
 
-pub struct VmHandlerAPI {
+pub struct VmHandlerApi {
     method: Method,
     handler: VmHandler,
 }
 
 static COLLECT_AND_REGISTER_ONCE: Once = Once::new();
 
-impl VmHandlerAPI {
+impl VmHandlerApi {
     pub const fn new(method: Method, handler: VmHandler) -> Self {
-        VmHandlerAPI { method, handler }
+        VmHandlerApi { method, handler }
     }
     pub fn register(&self) {
         set_handler(self.method, self.handler)
@@ -41,8 +41,8 @@ lazy_static! {
 }
 
 fn collect_and_register_handlers() {
-    inventory::collect!(VmHandlerAPI);
-    for info in inventory::iter::<VmHandlerAPI> {
+    inventory::collect!(VmHandlerApi);
+    for info in inventory::iter::<VmHandlerApi> {
         info.register();
     }
     for (method, hdl) in MUX.read().unwrap().iter() {

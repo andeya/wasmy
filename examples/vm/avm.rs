@@ -87,6 +87,6 @@ fn add(args: TestArgs) -> Result<TestRets> {
 // fn _vm_handle_0(args: &::wasmy_vm::Any) ->
 // ::wasmy_vm::Result<::wasmy_vm::Any>
 // {
-//     add(::wasmy_vm::VmHandlerAPI::unpack_any(args)
-//         ?).and_then(|res| ::wasmy_vm::VmHandlerAPI::pack_any(res))
-// } ::wasmy_vm::submit_handler! { :: wasmy_vm :: VmHandlerAPI :: new(0i32, _vm_handle_0) }
+//     add(::wasmy_vm::VmHandlerApi::unpack_any(args)
+//         ?).and_then(|res| ::wasmy_vm::VmHandlerApi::pack_any(res))
+// } ::wasmy_vm::submit_handler! { :: wasmy_vm :: VmHandlerApi :: new(0i32, _vm_handle_0) }
