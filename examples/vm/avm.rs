@@ -6,7 +6,7 @@ use tokio;
 
 use wasmy_vm::*;
 
-use crate::test::{TestArgs, TestResult};
+use crate::test::{TestArgs, TestRets};
 
 /// vm cli flags
 #[derive(StructOpt, Debug)]
@@ -57,7 +57,7 @@ fn main() {
                 let wasm_caller = wasm_caller.clone();
                 tokio::spawn(async move {
                     for i in 1..=number {
-                        let res: TestResult = wasm_caller.call(0, data.clone()).unwrap();
+                        let res: TestRets = wasm_caller.call(0, data.clone()).unwrap();
                         println!("NO.{}: {}+{}={}", i, data.get_a(), data.get_b(), res.get_c());
                     }
                 });
@@ -67,8 +67,8 @@ fn main() {
 
 
 #[vm_handle(0)]
-fn add(args: TestArgs) -> Result<TestResult> {
-    let mut res = TestResult::new();
+fn add(args: TestArgs) -> Result<TestRets> {
+    let mut res = TestRets::new();
     res.set_c(args.a + args.b);
     Ok(res)
 }
@@ -76,9 +76,9 @@ fn add(args: TestArgs) -> Result<TestResult> {
 
 // Expanded codes:
 //
-// fn add(args: TestArgs) -> Result<TestResult>
+// fn add(args: TestArgs) -> Result<TestRets>
 // {
-//     let mut res = TestResult::new();
+//     let mut res = TestRets::new();
 //     res.set_c(args.a + args.b);
 //     Ok(res)
 // }

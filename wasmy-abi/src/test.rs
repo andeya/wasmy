@@ -215,7 +215,7 @@ impl ::protobuf::reflect::ProtobufValue for TestArgs {
 
 #[derive(PartialEq,Clone,Default)]
 #[cfg_attr(feature = "with-serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct TestResult {
+pub struct TestRets {
     // message fields
     pub c: i32,
     // special fields
@@ -225,14 +225,14 @@ pub struct TestResult {
     pub cached_size: ::protobuf::CachedSize,
 }
 
-impl<'a> ::std::default::Default for &'a TestResult {
-    fn default() -> &'a TestResult {
-        <TestResult as ::protobuf::Message>::default_instance()
+impl<'a> ::std::default::Default for &'a TestRets {
+    fn default() -> &'a TestRets {
+        <TestRets as ::protobuf::Message>::default_instance()
     }
 }
 
-impl TestResult {
-    pub fn new() -> TestResult {
+impl TestRets {
+    pub fn new() -> TestRets {
         ::std::default::Default::default()
     }
 
@@ -252,7 +252,7 @@ impl TestResult {
     }
 }
 
-impl ::protobuf::Message for TestResult {
+impl ::protobuf::Message for TestRets {
     fn is_initialized(&self) -> bool {
         true
     }
@@ -322,8 +322,8 @@ impl ::protobuf::Message for TestResult {
         Self::descriptor_static()
     }
 
-    fn new() -> TestResult {
-        TestResult::new()
+    fn new() -> TestRets {
+        TestRets::new()
     }
 
     fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
@@ -332,37 +332,37 @@ impl ::protobuf::Message for TestResult {
             let mut fields = ::std::vec::Vec::new();
             fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeInt32>(
                 "c",
-                |m: &TestResult| { &m.c },
-                |m: &mut TestResult| { &mut m.c },
+                |m: &TestRets| { &m.c },
+                |m: &mut TestRets| { &mut m.c },
             ));
-            ::protobuf::reflect::MessageDescriptor::new_pb_name::<TestResult>(
-                "TestResult",
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<TestRets>(
+                "TestRets",
                 fields,
                 file_descriptor_proto()
             )
         })
     }
 
-    fn default_instance() -> &'static TestResult {
-        static instance: ::protobuf::rt::LazyV2<TestResult> = ::protobuf::rt::LazyV2::INIT;
-        instance.get(TestResult::new)
+    fn default_instance() -> &'static TestRets {
+        static instance: ::protobuf::rt::LazyV2<TestRets> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(TestRets::new)
     }
 }
 
-impl ::protobuf::Clear for TestResult {
+impl ::protobuf::Clear for TestRets {
     fn clear(&mut self) {
         self.c = 0;
         self.unknown_fields.clear();
     }
 }
 
-impl ::std::fmt::Debug for TestResult {
+impl ::std::fmt::Debug for TestRets {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         ::protobuf::text_format::fmt(self, f)
     }
 }
 
-impl ::protobuf::reflect::ProtobufValue for TestResult {
+impl ::protobuf::reflect::ProtobufValue for TestRets {
     fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
         ::protobuf::reflect::ReflectValueRef::Message(self)
     }
@@ -370,8 +370,8 @@ impl ::protobuf::reflect::ProtobufValue for TestResult {
 
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\ntest.proto\x12\x04test\"&\n\x08TestArgs\x12\x0c\n\x01a\x18\x01\x20\
-    \x01(\x05R\x01a\x12\x0c\n\x01b\x18\x02\x20\x01(\x05R\x01b\"\x1a\n\nTestR\
-    esult\x12\x0c\n\x01c\x18\x01\x20\x01(\x05R\x01cb\x06proto3\
+    \x01(\x05R\x01a\x12\x0c\n\x01b\x18\x02\x20\x01(\x05R\x01b\"\x18\n\x08Tes\
+    tRets\x12\x0c\n\x01c\x18\x01\x20\x01(\x05R\x01cb\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

@@ -8,6 +8,6 @@ message TestArgs {
   int32 a = 1;
   int32 b = 2;
 }
-message TestResult {
+message TestRets {
   int32 c = 1;
 }
