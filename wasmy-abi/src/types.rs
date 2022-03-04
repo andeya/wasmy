@@ -52,6 +52,9 @@ pub const ERR_CODE_MEM: ErrCode = ErrCode(-4);
 pub struct ErrCode(i32);
 
 impl ErrCode {
+    pub const fn from(i: i32) -> Self {
+        Self(i)
+    }
     pub fn value(&self) -> i32 {
         self.0
     }
@@ -62,6 +65,12 @@ impl ErrCode {
     #[inline]
     pub fn to_result<T, S: ToString>(&self, msg: S) -> Result<T> {
         CodeMsg::result(self.0, msg)
+    }
+}
+
+impl Into<ErrCode> for i32 {
+    fn into(self) -> ErrCode {
+        ErrCode(self)
     }
 }
 
@@ -113,7 +122,7 @@ impl<R: Message> From<OutRets> for Result<R> {
             return CodeMsg::result(out_rets.get_code(), out_rets.get_msg());
         }
         out_rets.get_data()
-                  .unpack::<R>()?
+                .unpack::<R>()?
             .map_or_else(
                 || ERR_CODE_PROTO.to_result("protobuf: the message type does not match the out_rets"),
                 |data| Ok(data),
