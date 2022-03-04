@@ -4,7 +4,8 @@ use std::sync::{Once, RwLock};
 
 pub use inventory::submit as submit_handler;
 use lazy_static::lazy_static;
-pub use wasmy_abi::*;
+
+pub use wasmy_abi::{abi::*, types::*};
 pub use wasmy_macros::vm_handle;
 
 pub type VmHandler = fn(&Any) -> Result<Any>;
@@ -72,5 +73,36 @@ fn handle(args: InArgs) -> OutRets {
     match res {
         Ok(a) => a.into(),
         Err(e) => e.into(),
+    }
+}
+
+pub(crate) struct WasmHandlerApi();
+
+impl WasmHandlerApi {
+    pub const fn onload_symbol() -> &'static str {
+        "_wasm_onload"
+    }
+    pub fn method_to_symbol(method: WasmMethod) -> String {
+        format!("_wasm_handle_{}", method)
+    }
+    pub fn symbol_to_method(symbol: &str) -> Option<WasmMethod> {
+        symbol.rsplit(|r| r == '_').next().and_then(|s| s.parse().ok())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::WasmHandlerApi;
+
+    #[test]
+    fn method_to_symbol() {
+        let method = WasmHandlerApi::method_to_symbol(10);
+        assert_eq!(method, "_wasm_handle_10");
+    }
+
+    #[test]
+    fn symbol_to_method() {
+        let method = WasmHandlerApi::symbol_to_method("_wasm_handle_10");
+        assert_eq!(method, Some(10));
     }
 }

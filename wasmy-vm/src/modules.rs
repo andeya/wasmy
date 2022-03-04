@@ -6,7 +6,7 @@ use wasmer::{Module, Store, Type};
 use wasmer_compiler_cranelift::Cranelift;
 use wasmer_engine_universal::Universal;
 
-use wasmy_abi::WasmHandlerApi;
+use crate::handler::WasmHandlerApi;
 
 use crate::{VmHandlerApi, WasmFile, WasmUri};
 
