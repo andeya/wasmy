@@ -14,12 +14,12 @@ use quote::quote;
 #[proc_macro_attribute]
 #[cfg(not(test))] // Work around for rust-lang/rust#62127
 pub fn vm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
-    let raw_item = proc_macro2::TokenStream::from(item.clone());
-    let raw_ident = syn::parse_macro_input!(item as syn::ItemFn).sig.ident;
     let method = args.to_string().parse::<i32>().expect("expect #[vm_handle(wasmy_abi::VmMessage)]");
     if method < 0 {
         panic!("vm_handle: VmMessage({})<0", method);
     }
+    let raw_item = proc_macro2::TokenStream::from(item.clone());
+    let raw_ident = syn::parse_macro_input!(item as syn::ItemFn).sig.ident;
     let new_ident = Ident::new(&format!("_vm_handle_{}", method), Span::call_site());
     let new_item = quote! {
         #raw_item
@@ -49,12 +49,12 @@ pub fn vm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 #[cfg(not(test))] // Work around for rust-lang/rust#62127
 pub fn wasm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
-    let mut new_item = item.clone();
-    let raw_ident = syn::parse_macro_input!(item as syn::ItemFn).sig.ident;
     let method = args.to_string().parse::<i32>().expect("expect #[wasm_handle(wasmy_abi::WasmMessage)]");
     if method < 0 {
         panic!("wasm_handle: WasmMessage({})<0", method);
     }
+    let mut new_item = item.clone();
+    let raw_ident = syn::parse_macro_input!(item as syn::ItemFn).sig.ident;
     let inner_ident = Ident::new("_inner", Span::call_site());
     let inner_item = wasm_gen_inner(inner_ident.clone(), raw_ident);
     let outer_ident = Ident::new(&format!("_wasm_handle_{}", method), Span::call_site());
