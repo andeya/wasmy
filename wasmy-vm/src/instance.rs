@@ -299,10 +299,12 @@ impl Instance {
     fn next_ctx_id(&self) -> i32 {
         self.next_ctx_id.get()
     }
-    pub(crate) fn try_reuse_buffer(&self, buffer: Vec<u8>) {
+    pub(crate) fn try_reuse_buffer(&self, mut buffer: Vec<u8>) {
         let next_id = self.next_ctx_id();
         let mut cache = self.borrow_mut_ctx_memory();
         if !cache.contains_key(&next_id) {
+            // clear data to keep data safe
+            buffer.fill(0);
             cache.insert(next_id, buffer);
         }
     }
