@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 pub use protobuf::{CodedOutputStream, Message, ProtobufEnum};
 pub use protobuf::well_known_types::Any;
 
@@ -48,21 +50,17 @@ pub fn wasm_handle<F, C>(ctx_size: i32, args_size: i32, handle: F)
 
 impl<C: Message> WasmCtx<C> {
     fn from_size(size: usize) -> Self {
-        Self { size, ctx: None }
+        Self { size, _priv: PhantomData }
     }
-    pub fn try_value(&mut self) -> Result<&C> {
-        if let Some(ref ctx) = self.ctx {
-            Ok(ctx)
-        } else if self.size == 0 {
-            self.ctx = Some(C::new());
-            Ok(self.ctx.as_ref().unwrap())
+    pub fn try_value(&self) -> Result<C> {
+        if self.size == 0 {
+            Ok(C::new())
         } else {
             let buffer = vec![0u8; self.size];
             unsafe { _vm_recall(IS_CTX, buffer.as_ptr() as i32) };
             match C::parse_from_bytes(&buffer) {
                 Ok(ctx) => {
-                    self.ctx = Some(ctx);
-                    Ok(self.ctx.as_ref().unwrap())
+                    Ok(ctx)
                 }
                 Err(err) => {
                     Err(ERR_CODE_PROTO.to_code_msg(err))
@@ -70,7 +68,7 @@ impl<C: Message> WasmCtx<C> {
             }
         }
     }
-    pub fn call_vm<M: Message, R: Message>(method: VmMethod, data: M) -> Result<R> {
+    pub fn call_vm<M: Message, R: Message>(&self, method: VmMethod, data: M) -> Result<R> {
         let args = InArgs::try_new(method, data)?;
         let mut buffer = args.write_to_bytes().unwrap();
         let size = unsafe { _vm_invoke(buffer.as_ptr() as i32, buffer.len() as i32) };

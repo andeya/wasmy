@@ -44,11 +44,14 @@ fn multiply(ctx: WasmCtx, args: TestArgs) -> Result<TestRets> {
 // pub extern "C" fn
 // _wasm_handle_0(ctx_size: i32, args_size: i32)
 // {
+//     #[allow(unused_mut)]
 //     #[inline]
-//     fn _inner(ctx: WasmCtx, args: ::wasmy_abi::InArgs) -> ::
-//     wasmy_abi::Result<::wasmy_abi::Any>
+//     fn
+//     _inner(ctx: WasmCtx, args: ::wasmy_abi::InArgs) -> ::wasmy_abi::
+//     Result<::wasmy_abi::Any>
 //     { ::wasmy_abi::pack_any(multiply(ctx, args.get_args()?)?) }
 //     ;
 //     ::
 //     wasmy_abi::wasm_handle(ctx_size, args_size, _inner)
 // }
+

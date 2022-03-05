@@ -19,9 +19,9 @@ fn init() {
 }
 
 #[wasm_handle(0)]
-fn multiply(mut ctx: WasmCtx<TestCtx>, args: TestArgs) -> Result<TestRets> {
+fn multiply(ctx: WasmCtx<TestCtx>, args: TestArgs) -> Result<TestRets> {
     let rid = random::<u8>() as i32;
-    let info = ctx.try_value();
+    let info = ctx.try_value()?;
     unsafe {
         STATE += 1;
         println!("[Wasm-Simple({})] STATE={}, method({}) ctx={:?}, args={{{:?}}}", rid, STATE, 0, info, args);
@@ -59,11 +59,10 @@ fn multiply(mut ctx: WasmCtx<TestCtx>, args: TestArgs) -> Result<TestRets> {
 //     init();
 // }
 //
-// fn multiply(mut ctx: WasmCtx<TestCtx>, args: TestArgs) -> Result<
-//     TestRets>
+// fn multiply(ctx: WasmCtx<TestCtx>, args: TestArgs) -> Result<TestRets>
 // {
 //     let rid = random::<u8>() as i32;
-//     let info = ctx.try_value();
+//     let info = ctx.try_value()?;
 //     unsafe
 //         {
 //             STATE += 1;
@@ -91,9 +90,10 @@ fn multiply(mut ctx: WasmCtx<TestCtx>, args: TestArgs) -> Result<TestRets> {
 //     #[allow(unused_mut)]
 //     #[inline]
 //     fn
-//     _inner(mut ctx: WasmCtx<TestCtx>, args: ::wasmy_abi::InArgs) -> ::
+//     _inner(ctx: WasmCtx<TestCtx>, args: ::wasmy_abi::InArgs) -> ::
 //     wasmy_abi::Result<::wasmy_abi::Any>
 //     { ::wasmy_abi::pack_any(multiply(ctx, args.get_args()?)?) }
 //     ;
 //     ::
 //     wasmy_abi::wasm_handle(ctx_size, args_size, _inner)
+// }

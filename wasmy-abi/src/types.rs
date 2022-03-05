@@ -1,5 +1,6 @@
 use std::convert::Infallible;
 use std::fmt::Formatter;
+use std::marker::PhantomData;
 use std::mem;
 use std::ops::{Deref, FromResidual};
 
@@ -17,10 +18,10 @@ pub type Result<T> = std::result::Result<T, CodeMsg>;
 #[derive(Debug, Clone)]
 pub struct WasmCtx<C: Message = Empty> {
     pub(crate) size: usize,
-    pub(crate) ctx: Option<C>,
+    pub(crate) _priv: PhantomData<C>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CodeMsg {
     pub code: i32,
     pub msg: String,
