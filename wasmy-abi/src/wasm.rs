@@ -70,7 +70,7 @@ impl<C: Message> WasmCtx<C> {
             }
         }
     }
-    pub fn call_vm<M: Message, R: Message>(&self, method: VmMethod, data: M) -> Result<R> {
+    pub fn call_vm<M: Message, R: Message>(method: VmMethod, data: M) -> Result<R> {
         let args = InArgs::try_new(method, data)?;
         let mut buffer = args.write_to_bytes().unwrap();
         let size = unsafe { _vm_invoke(buffer.as_ptr() as i32, buffer.len() as i32) };
