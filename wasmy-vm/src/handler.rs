@@ -47,12 +47,17 @@ fn collect_and_register_handlers() {
         info.register();
     }
     for (method, hdl) in MUX.read().unwrap().iter() {
-        println!("collect_and_register_handlers: method={}, hdl={:?}", method, hdl.type_id());
+        println!("collect_and_register_handlers: method={}, hdl_type_id={:?}", method, hdl.type_id());
     }
 }
 
 pub fn set_handler(method: Method, hdl: VmHandler) {
-    MUX.write().unwrap().insert(method, hdl);
+    let ty = hdl.type_id();
+    if let Some(old) = MUX.write().unwrap().insert(method, hdl) {
+        if old.type_id() != ty {
+            panic!("duplicate register handler: method={}, old_type_id={:?}, new_type_id={:?}", method, old.type_id(), ty);
+        }
+    }
 }
 
 #[allow(dead_code)]

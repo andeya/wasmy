@@ -24,6 +24,7 @@ struct Opt {
 }
 
 fn main() {
+    link_mod();
     println!("wasmy, easily customize my wasm app!");
     let mut opt: Opt = Opt::from_args();
     if let Some(p) = opt.path_prefix {
@@ -65,12 +66,15 @@ fn main() {
         });
 }
 
-
-#[vm_handle(0)]
-fn add(args: TestArgs) -> Result<TestRets> {
-    let mut rets = TestRets::new();
-    rets.set_c(args.a + args.b);
-    Ok(rets)
+// Make sure the mod is linked
+fn link_mod() {
+    #[vm_handle(0)]
+    fn add(args: TestArgs) -> Result<TestRets> {
+        let mut rets = TestRets::new();
+        rets.set_c(args.a + args.b);
+        Ok(rets)
+    }
+    // more #[vm_handle(i32)] fn ...
 }
 
 

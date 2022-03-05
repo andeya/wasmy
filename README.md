@@ -43,18 +43,18 @@ use wasmy_abi::test::*;
 
 #[wasm_handle(0)]
 fn multiply(ctx: WasmCtx, args: TestArgs) -> Result<TestRets> {
-  let rid = random::<u8>() as i32;
-  println!("[Wasm-Simple({})] handle wasm method({}) ctx={:?}, args={{{:?}}}", rid, 0, ctx, args);
+    let rid = random::<u8>() as i32;
+    println!("[Wasm-Simple({})] handle wasm method({}) ctx={:?}, args={{{:?}}}", rid, 0, ctx, args);
 
-  let mut vm_args = TestArgs::new();
-  vm_args.a = rid;
-  vm_args.b = rid;
-  let vm_rets: TestRets = ctx.call_vm(0, vm_args)?;
-  println!("[Wasm-Simple({})] call vm method({}): args={{{:?}}}, rets={}", rid, 0, vm_rets, vm_rets.get_c());
+    let mut vm_args = TestArgs::new();
+    vm_args.a = rid;
+    vm_args.b = rid;
+    let vm_rets: TestRets = ctx.call_vm(0, vm_args)?;
+    println!("[Wasm-Simple({})] call vm method({}): args={{{:?}}}, rets={}", rid, 0, vm_rets, vm_rets.get_c());
 
-  let mut rets = TestRets::new();
-  rets.set_c(args.a * args.b);
-  Ok(rets)
+    let mut rets = TestRets::new();
+    rets.set_c(args.a * args.b);
+    Ok(rets)
 }
 ```
 
@@ -67,6 +67,7 @@ use crate::test::{TestArgs, TestRets};
 ...
 
 fn main() {
+    link_mod();
     println!("wasmy, easily customize my wasm app!");
     ...
     let wasm_caller = load_wasm(wasm_path).unwrap();
@@ -79,11 +80,15 @@ fn main() {
     }
 }
 
-#[vm_handle(0)]
-fn add(args: TestArgs) -> Result<TestRets> {
-  let mut rets = TestRets::new();
-  rets.set_c(args.a + args.b);
-  Ok(rets)
+// Make sure the mod is linked
+fn link_mod() {
+    #[vm_handle(0)]
+    fn add(args: TestArgs) -> Result<TestRets> {
+        let mut rets = TestRets::new();
+        rets.set_c(args.a + args.b);
+        Ok(rets)
+    }
+    // more #[vm_handle(i32)] fn ...
 }
 ```
 
