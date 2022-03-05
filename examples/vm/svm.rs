@@ -1,4 +1,4 @@
-//! detailed vm example
+//! simple vm example
 //!
 use std::{env, thread};
 use std::path::PathBuf;
