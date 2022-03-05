@@ -12,7 +12,7 @@ pub type Method = i32;
 pub type WasmMethod = Method;
 pub type VmMethod = Method;
 pub type CtxId = i32;
-pub type Result<Data> = std::result::Result<Data, CodeMsg>;
+pub type Result<T> = std::result::Result<T, CodeMsg>;
 
 #[derive(Debug, Copy, Clone)]
 pub struct WasmCtx {
@@ -211,3 +211,11 @@ impl FromResidual<Option<Infallible>> for OutRets {
     }
 }
 
+impl FromResidual<Result<Infallible>> for OutRets {
+    fn from_residual(residual: Result<Infallible>) -> Self {
+        match residual {
+            Err(e)=>e.into(),
+            _ => {unreachable!()}
+        }
+    }
+}

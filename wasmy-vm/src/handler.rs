@@ -69,7 +69,11 @@ pub(crate) fn vm_invoke(args_pb: &Vec<u8>) -> OutRets {
 
 
 fn handle(args: InArgs) -> OutRets {
-    let res: Result<Any> = MUX.read().unwrap().get(&args.get_method())?(args.get_data());
+    let res: Result<Any> = MUX.read().unwrap()
+                              .get(&args.get_method())
+                              .ok_or_else(|| {
+                                  ERR_CODE_NONE.to_code_msg(format!("undefined virtual machine method({})", args.get_method()))
+                              })?(args.get_data());
     match res {
         Ok(a) => a.into(),
         Err(e) => e.into(),
