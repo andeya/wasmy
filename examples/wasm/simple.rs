@@ -42,15 +42,13 @@ fn multiply(ctx: WasmCtx, args: TestArgs) -> Result<TestRets> {
 // #[inline]
 // #[no_mangle]
 // pub extern "C" fn
-// _wasm_handle_0(ctx_id: i32, size: i32)
+// _wasm_handle_0(ctx_size: i32, args_size: i32)
 // {
 //     #[inline]
-//     fn
-//     _inner(ctx: ::wasmy_abi::WasmCtx, args: ::wasmy_abi::InArgs) -> ::
+//     fn _inner(ctx: WasmCtx, args: ::wasmy_abi::InArgs) -> ::
 //     wasmy_abi::Result<::wasmy_abi::Any>
 //     { ::wasmy_abi::pack_any(multiply(ctx, args.get_args()?)?) }
 //     ;
 //     ::
-//     wasmy_abi::wasm_handle(ctx_id, size, _inner)
+//     wasmy_abi::wasm_handle(ctx_size, args_size, _inner)
 // }
-

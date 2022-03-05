@@ -11,3 +11,6 @@ message TestArgs {
 message TestRets {
   int32 c = 1;
 }
+message TestCtx {
+  string ctx = 1;
+}

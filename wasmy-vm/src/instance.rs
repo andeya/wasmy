@@ -1,8 +1,8 @@
 use core::ops::FnOnce;
 use std::alloc::{alloc, Layout};
-use std::cell::{Cell, RefCell, RefMut};
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
-use std::sync::RwLock;
+use std::sync::{Mutex, RwLock};
 use std::thread;
 use std::thread::ThreadId;
 
@@ -16,7 +16,7 @@ use crate::handler::*;
 use crate::wasm_file::WasmFile;
 
 lazy_static::lazy_static! {
-    static ref INSTANCES: RwLock<HashMap<LocalInstanceKey, Box<Instance>>> = RwLock::new(HashMap::new());
+    static ref INSTANCES: RwLock<HashMap<LocalInstanceKey, Mutex<Box<Instance>>>> = RwLock::new(HashMap::new());
 }
 
 #[derive(Hash, Eq, PartialEq, Clone, Debug)]
@@ -42,7 +42,7 @@ unsafe impl Sync for InstanceEnv {}
 unsafe impl Send for InstanceEnv {}
 
 impl InstanceEnv {
-    fn from(key: LocalInstanceKey) -> InstanceEnv {
+    fn from(key: LocalInstanceKey) -> Self {
         unsafe {
             let ptr = alloc(Layout::new::<Instance>()) as *mut Instance;
             InstanceEnv {
@@ -54,7 +54,7 @@ impl InstanceEnv {
     fn init_instance(&self, instance: Instance) {
         unsafe {
             self.ptr.write(instance);
-            INSTANCES.write().unwrap().insert(self.key.clone(), Box::from_raw(self.ptr));
+            INSTANCES.write().unwrap().insert(self.key.clone(), Mutex::new(Box::from_raw(self.ptr)));
         }
     }
     fn as_instance(&self) -> &Instance {
@@ -77,19 +77,55 @@ pub(crate) fn with<F, R>(wasm_uri: WasmUri, callback: F) -> Result<R>
     let key = LocalInstanceKey::from(wasm_uri);
     {
         if let Some(ins) = INSTANCES.read().unwrap().get(&key) {
-            return callback(ins);
+            return callback(&ins.lock().unwrap())
         }
     }
     return callback(Instance::new_local(key)?.as_instance());
-    // return ERR_CODE_NONE.to_result("not found vm instance by wasm_uri")
 }
 
 #[derive(Clone, Debug)]
 pub(crate) struct Instance {
     key: LocalInstanceKey,
     instance: wasmer::Instance,
-    next_ctx_id: Cell<i32>,
-    ctx_memory: RefCell<HashMap<i32, Vec<u8>>>,
+    loaded: Cell<bool>,
+    context: RefCell<Context>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct Context {
+    ctx_bytes: Vec<u8>,
+    swap_memory: Vec<u8>,
+}
+
+impl Context {
+    fn with_capacity(capacity: usize) -> Self {
+        Self { ctx_bytes: Vec::with_capacity(capacity), swap_memory: Vec::with_capacity(capacity) }
+    }
+
+    fn set_args<M: Message>(&mut self, ctx: Option<M>, in_args: InArgs) -> (usize, usize) {
+        let args_size = write_to_vec(&in_args, &mut self.swap_memory);
+        if args_size == 0 {
+            unsafe { self.swap_memory.set_len(0) }
+        }
+        let ctx_size = if let Some(ctx) = ctx {
+            write_to_vec(&ctx, &mut self.ctx_bytes)
+        } else {
+            unsafe { self.ctx_bytes.set_len(0) };
+            0
+        };
+        (ctx_size, args_size)
+    }
+
+    fn out_rets(&mut self) -> OutRets {
+        unsafe { self.ctx_bytes.set_len(0) };
+        let res = if self.swap_memory.len() > 0 {
+            OutRets::parse_from_bytes(self.swap_memory.as_slice()).unwrap()
+        } else {
+            OutRets::new()
+        };
+        unsafe { self.swap_memory.set_len(0) };
+        res
+    }
 }
 
 unsafe impl Sync for Instance {}
@@ -124,8 +160,8 @@ impl Instance {
         let instance = Instance {
             key: ins_env.key.clone(),
             instance: wasmer::Instance::new(&module, &import_object)?,
-            ctx_memory: RefCell::new(HashMap::with_capacity(1024)),
-            next_ctx_id: Cell::new(0),
+            loaded: Cell::new(false),
+            context: RefCell::new(Context::with_capacity(1024)),
         };
         #[cfg(debug_assertions)]println!("[{:?}] created instance: wasm_uri={}", ins_env.key.thread_id, ins_env.key.wasm_uri);
 
@@ -148,31 +184,26 @@ impl Instance {
             .import_object(&module)?;
 
         import_object.register("env", import_namespace!({
-            "_vm_recall" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, ctx_id: i32, offset: i32| {
+            "_vm_recall" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, is_ctx: i32, offset: i32| {
                 let key = &ins_env.key;
-                #[cfg(debug_assertions)] println!("[VM:{:?}]_vm_recall: wasm_uri={}, ctx_id={}, offset={}", key.thread_id, key.wasm_uri, ctx_id, offset);
+                #[cfg(debug_assertions)] println!("[VM:{:?}]_vm_recall: wasm_uri={}, is_ctx={}, offset={}", key.thread_id, key.wasm_uri, is_ctx!=0, offset);
                 let ins = ins_env.as_instance();
-                let _ = ins.use_mut_buffer(ctx_id, 0, |data| {
-                    ins.set_view_bytes(offset as usize, data.iter());
-                    let len = data.len();
-                    unsafe { data.set_len(0) };
-                    len
-                });
+                ins.ctx_write_to(is_ctx!=0, offset as usize);
             }),
-            "_vm_restore" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, ctx_id: i32, offset: i32, size: i32| {
+            "_vm_restore" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, offset: i32, size: i32| {
                 let key = &ins_env.key;
-                #[cfg(debug_assertions)] println!("[VM:{:?}]_vm_restore: wasm_uri={}, ctx_id={}, offset={}, size={}", key.thread_id, key.wasm_uri, ctx_id, offset, size);
+                #[cfg(debug_assertions)] println!("[VM:{:?}]_vm_restore: wasm_uri={}, offset={}, size={}", key.thread_id, key.wasm_uri, offset, size);
                 let ins = ins_env.as_instance();
-                let _ = ins.use_mut_buffer(ctx_id, size as usize, |buffer|{
+                let _ = ins.use_ctx_swap_memory(size as usize, |buffer|{
                     ins.read_view_bytes(offset as usize, size as usize, buffer);
                     buffer.len()
                 });
             }),
-            "_vm_invoke" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, ctx_id: i32, offset: i32, size: i32|-> i32 {
+            "_vm_invoke" => Function::new_native_with_env(module.store(), ins_env.clone(), |ins_env: &InstanceEnv, offset: i32, size: i32|-> i32 {
                 let key = &ins_env.key;
-                #[cfg(debug_assertions)] println!("[VM:{:?}]_vm_invoke: wasm_uri={}, ctx_id={}, offset={}, size={}", key.thread_id, key.wasm_uri, ctx_id, offset, size);
+                #[cfg(debug_assertions)] println!("[VM:{:?}]_vm_invoke: wasm_uri={}, offset={}, size={}", key.thread_id, key.wasm_uri, offset, size);
                 let ins = ins_env.as_instance();
-                ins.use_mut_buffer(ctx_id, size as usize, |buffer| {
+                ins.use_ctx_swap_memory(size as usize, |buffer| {
                     ins.read_view_bytes(offset as usize, size as usize, buffer);
                     write_to_vec(&vm_invoke(buffer), buffer)
                 }) as i32
@@ -194,35 +225,33 @@ impl Instance {
             #[cfg(debug_assertions)]println!("[{:?}]initialized instance: wasm_uri={}", self.key.thread_id, self.key.wasm_uri);
             Ok(())
         });
-        self.next_ctx_id.set(1);
+        self.loaded.set(true);
         ret
     }
-    #[inline]
-    pub(crate) fn call_wasm_handler(&self, method: Method, in_args: InArgs) -> Result<OutRets> {
-        let ctx_id = self.gen_ctx_id()?;
-        #[cfg(debug_assertions)] println!("ctx_id={}, method={}, data={:?}", ctx_id, in_args.get_method(), in_args.get_data());
-        let buffer_len = self.use_mut_buffer(ctx_id, in_args.compute_size() as usize, |buffer| {
-            write_to_with_cached_sizes(&in_args, buffer)
-        });
-        let sign_name = WasmHandlerApi::method_to_symbol(method);
-        self.invoke_instance(&sign_name, Some((ctx_id, buffer_len as i32)))?;
-        let buffer = self.take_buffer(ctx_id).unwrap_or(vec![]);
-        let res = if buffer.len() > 0 {
-            OutRets::parse_from_bytes(buffer.as_slice()).unwrap()
+    fn check_loaded(&self) -> Result<()> {
+        if self.loaded.get() {
+            Ok(())
         } else {
-            OutRets::new()
-        };
-        self.try_reuse_buffer(buffer);
-        Ok(res)
+            ERR_CODE_NONE.to_result("instance has not completed initialization")
+        }
+    }
+    #[inline]
+    pub(crate) fn call_wasm_handler<C: Message>(&self, ctx: Option<C>, method: Method, in_args: InArgs) -> Result<OutRets> {
+        self.check_loaded()?;
+        #[cfg(debug_assertions)] println!("method={}, data={:?}", in_args.get_method(), in_args.get_data());
+        let (ctx_size, args_size) = self.context.borrow_mut().set_args(ctx, in_args);
+        let sign_name = WasmHandlerApi::method_to_symbol(method);
+        self.invoke_instance(&sign_name, Some((ctx_size as i32, args_size as i32)))?;
+        Ok(self.context.borrow_mut().out_rets())
     }
     pub(crate) fn invoke_instance(&self, sign_name: &str, args: Option<(i32, i32)>) -> Result<()> {
         let exports = &self.instance.exports;
         loop {
-            let ret = if let Some((ctx_id, size)) = args.clone() {
+            let ret = if let Some((ctx_size, args_size)) = args.clone() {
                 exports
                     .get_native_function::<(i32, i32), ()>(sign_name)
                     .map_err(|e| ERR_CODE_NONE.to_code_msg(e))?
-                    .call(ctx_id, size)
+                    .call(ctx_size, args_size)
             } else {
                 exports
                     .get_native_function::<(), ()>(sign_name)
@@ -247,22 +276,25 @@ impl Instance {
             }
         }
     }
-    fn borrow_mut_ctx_memory(&self) -> RefMut<HashMap<i32, Vec<u8>>> {
-        self.ctx_memory.borrow_mut()
-    }
-    pub(crate) fn use_mut_buffer<F: FnOnce(&mut Vec<u8>) -> usize>(&self, ctx_id: i32, size: usize, call: F) -> usize {
-        let mut cache = self.borrow_mut_ctx_memory();
-        if let Some(buffer) = cache.get_mut(&ctx_id) {
-            if size > 0 {
-                resize_with_capacity(buffer, size);
-            }
-            return call(buffer);
+    fn ctx_write_to(&self, is_ctx: bool, offset: usize) {
+        let mut ctx = self.context.borrow_mut();
+        let cache: &mut Vec<u8> = if is_ctx {
+            ctx.ctx_bytes.as_mut()
+        } else {
+            ctx.swap_memory.as_mut()
+        };
+        self.set_view_bytes(offset as usize, cache.iter());
+        if !is_ctx {
+            unsafe { cache.set_len(0); }
         }
-        cache.insert(ctx_id, vec![0; size]);
-        call(cache.get_mut(&ctx_id).unwrap())
     }
-    pub(crate) fn take_buffer(&self, ctx_id: i32) -> Option<Vec<u8>> {
-        self.borrow_mut_ctx_memory().remove(&ctx_id)
+    pub(crate) fn use_ctx_swap_memory<F: FnOnce(&mut Vec<u8>) -> usize>(&self, size: usize, call: F) -> usize {
+        let mut ctx = self.context.borrow_mut();
+        let cache: &mut Vec<u8> = ctx.swap_memory.as_mut();
+        if size > 0 {
+            resize_with_capacity(cache, size);
+        }
+        return call(cache);
     }
     fn get_memory(&self) -> &Memory {
         self.instance.exports.get_memory("memory").unwrap()
@@ -286,26 +318,6 @@ impl Instance {
             .iter()
             .map(|c| c.get()).enumerate() {
             buffer[x.0] = x.1;
-        }
-    }
-    pub(crate) fn gen_ctx_id(&self) -> Result<i32> {
-        let ctx_id = self.next_ctx_id.get();
-        if ctx_id <= 0 {
-            return ERR_CODE_NONE.to_result("has not completed initialization")
-        }
-        self.next_ctx_id.set(ctx_id + 1);
-        Ok(ctx_id)
-    }
-    fn next_ctx_id(&self) -> i32 {
-        self.next_ctx_id.get()
-    }
-    pub(crate) fn try_reuse_buffer(&self, mut buffer: Vec<u8>) {
-        let next_id = self.next_ctx_id();
-        let mut cache = self.borrow_mut_ctx_memory();
-        if !cache.contains_key(&next_id) {
-            // clear data to keep data safe
-            buffer.fill(0);
-            cache.insert(next_id, buffer);
         }
     }
 }

@@ -6,7 +6,7 @@ use tokio;
 
 use wasmy_vm::*;
 
-use crate::test::{TestArgs, TestRets};
+use crate::test::{TestArgs, TestCtx, TestRets};
 
 /// vm cli flags
 #[derive(StructOpt, Debug)]
@@ -35,6 +35,9 @@ fn main() {
     println!("wasm file path: {:?}", wasm_path);
 
     let wasm_caller = load_wasm(wasm_path).unwrap();
+    let mut ctx = TestCtx::new();
+    ctx.set_ctx(env!("CARGO_PKG_VERSION").to_string());
+    println!("ctx={:?}", ctx);
     let mut data = TestArgs::new();
     data.set_a(2);
     data.set_b(5);
@@ -54,11 +57,12 @@ fn main() {
         .unwrap()
         .block_on(async {
             for _ in 1..=thread_num {
-                let data = data.clone();
                 let wasm_caller = wasm_caller.clone();
+                let data = data.clone();
+                let ctx = ctx.clone();
                 tokio::spawn(async move {
                     for i in 1..=number {
-                        let rets: TestRets = wasm_caller.call(0, data.clone()).unwrap();
+                        let rets: TestRets = wasm_caller.ctx_call(ctx.clone(), 0, data.clone()).unwrap();
                         println!("NO.{}: {}+{}={}", i, data.get_a(), data.get_b(), rets.get_c());
                     }
                 });

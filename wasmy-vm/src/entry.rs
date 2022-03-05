@@ -32,7 +32,13 @@ impl WasmCaller {
     pub fn call<A: Message, R: Message>(&self, method: Method, data: A) -> Result<R> {
         let in_args = InArgs::try_new(method, data)?;
         instance::with(self.0.clone(), |ins| -> Result<R>{
-            ins.call_wasm_handler(method, in_args)?.into()
+            ins.call_wasm_handler(None::<Empty>, method, in_args)?.into()
+        })
+    }
+    pub fn ctx_call<C: Message, A: Message, R: Message>(&self, ctx: C, method: Method, data: A) -> Result<R> {
+        let in_args = InArgs::try_new(method, data)?;
+        instance::with(self.0.clone(), |ins| -> Result<R>{
+            ins.call_wasm_handler(Some(ctx), method, in_args)?.into()
         })
     }
 }

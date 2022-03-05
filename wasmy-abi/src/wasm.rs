@@ -7,24 +7,28 @@ use crate::types::*;
 /// The ABI interaction functions of the virtual machine.
 // #[cfg(target_arch = "wasm32")]
 extern "C" {
-    pub(crate) fn _vm_recall(ctx_id: CtxId, offset: i32);
-    pub(crate) fn _vm_restore(ctx_id: CtxId, offset: i32, size: i32);
-    pub(crate) fn _vm_invoke(ctx_id: CtxId, offset: i32, size: i32) -> i32;
+    pub(crate) fn _vm_recall(is_ctx: i32, offset: i32);
+    pub(crate) fn _vm_restore(offset: i32, size: i32);
+    pub(crate) fn _vm_invoke(offset: i32, size: i32) -> i32;
 }
 
+const NON_CTX: i32 = 0;
+const IS_CTX: i32 = 1;
+
 /// The underlying function of wasm to handle requests.
-pub fn wasm_handle<F>(ctx_id: CtxId, size: i32, handle: F)
+pub fn wasm_handle<F, C>(ctx_size: i32, args_size: i32, handle: F)
     where
-        F: Fn(WasmCtx, InArgs) -> Result<Any>,
+        F: Fn(WasmCtx<C>, InArgs) -> Result<Any>,
+        C: Message,
 {
-    if size <= 0 {
+    if args_size <= 0 {
         return;
     }
-    let mut buffer = vec![0u8; size as usize];
-    unsafe { _vm_recall(ctx_id, buffer.as_ptr() as i32) };
+    let mut buffer = vec![0u8; args_size as usize];
+    unsafe { _vm_recall(NON_CTX, buffer.as_ptr() as i32) };
     let res: OutRets = match InArgs::parse_from_bytes(&buffer) {
-        Ok(guest_args) => {
-            handle(WasmCtx::from_id(ctx_id), guest_args).into()
+        Ok(args) => {
+            handle(WasmCtx::from_size(ctx_size as usize), args).into()
         }
         Err(err) => {
             ERR_CODE_PROTO.to_code_msg(err).into()
@@ -39,19 +43,42 @@ pub fn wasm_handle<F>(ctx_id: CtxId, size: i32, handle: F)
     let mut os = CodedOutputStream::bytes(&mut buffer);
     res.write_to_with_cached_sizes(&mut os).unwrap();
     os.flush().unwrap();
-    unsafe { _vm_restore(ctx_id, buffer.as_ptr() as i32, buffer.len() as i32) };
+    unsafe { _vm_restore(buffer.as_ptr() as i32, buffer.len() as i32) };
 }
 
-impl WasmCtx {
+impl<C: Message> WasmCtx<C> {
+    fn from_size(size: usize) -> Self {
+        Self { size, ctx: None }
+    }
+    pub fn try_value(&mut self) -> Result<&C> {
+        if let Some(ref ctx) = self.ctx {
+            Ok(ctx)
+        } else if self.size == 0 {
+            self.ctx = Some(C::new());
+            Ok(self.ctx.as_ref().unwrap())
+        } else {
+            let buffer = vec![0u8; self.size];
+            unsafe { _vm_recall(IS_CTX, buffer.as_ptr() as i32) };
+            match C::parse_from_bytes(&buffer) {
+                Ok(ctx) => {
+                    self.ctx = Some(ctx);
+                    Ok(self.ctx.as_ref().unwrap())
+                }
+                Err(err) => {
+                    Err(ERR_CODE_PROTO.to_code_msg(err))
+                }
+            }
+        }
+    }
     pub fn call_vm<M: Message, R: Message>(&self, method: VmMethod, data: M) -> Result<R> {
         let args = InArgs::try_new(method, data)?;
         let mut buffer = args.write_to_bytes().unwrap();
-        let size = unsafe { _vm_invoke(self.id(), buffer.as_ptr() as i32, buffer.len() as i32) };
+        let size = unsafe { _vm_invoke(buffer.as_ptr() as i32, buffer.len() as i32) };
         if size <= 0 {
             return Ok(R::new());
         }
         buffer.resize(size as usize, 0);
-        unsafe { _vm_recall(self.id(), buffer.as_ptr() as i32) };
+        unsafe { _vm_recall(NON_CTX, buffer.as_ptr() as i32) };
         OutRets::parse_from_bytes(buffer.as_slice())?
             .into()
     }

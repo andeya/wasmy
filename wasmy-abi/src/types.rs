@@ -14,18 +14,10 @@ pub type VmMethod = Method;
 pub type CtxId = i32;
 pub type Result<T> = std::result::Result<T, CodeMsg>;
 
-#[derive(Debug, Copy, Clone)]
-pub struct WasmCtx {
-    id: CtxId,
-}
-
-impl WasmCtx {
-    pub(crate) fn id(&self) -> CtxId {
-        self.id
-    }
-    pub(crate) fn from_id(id: CtxId) -> WasmCtx {
-        WasmCtx { id }
-    }
+#[derive(Debug, Clone)]
+pub struct WasmCtx<C: Message = Empty> {
+    pub(crate) size: usize,
+    pub(crate) ctx: Option<C>,
 }
 
 #[derive(Debug)]
@@ -214,8 +206,8 @@ impl FromResidual<Option<Infallible>> for OutRets {
 impl FromResidual<Result<Infallible>> for OutRets {
     fn from_residual(residual: Result<Infallible>) -> Self {
         match residual {
-            Err(e)=>e.into(),
-            _ => {unreachable!()}
+            Err(e) => e.into(),
+            _ => { unreachable!() }
         }
     }
 }
