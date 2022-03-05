@@ -8,7 +8,7 @@ use lazy_static::lazy_static;
 pub use wasmy_abi::{abi::*, types::*};
 pub use wasmy_macros::vm_handle;
 
-pub type VmHandler = fn(&Any) -> Result<Any>;
+pub type VmHandler = fn(usize, &Any) -> Result<Any>;
 
 pub struct VmHandlerApi {
     method: Method,
@@ -29,6 +29,13 @@ impl VmHandlerApi {
     }
     pub fn unpack_any<R: Message>(data: &Any) -> Result<R> {
         unpack_any(data)
+    }
+    pub unsafe fn try_as<T: Message>(ptr: usize) -> Option<&'static T> {
+        if ptr > 0 {
+            Some(&*(ptr as *const T))
+        } else {
+            None
+        }
     }
     pub(crate) fn collect_and_register_once() {
         COLLECT_AND_REGISTER_ONCE.call_once(|| {
@@ -61,10 +68,10 @@ pub fn set_handler(method: Method, hdl: VmHandler) {
 }
 
 #[allow(dead_code)]
-pub(crate) fn vm_invoke(args_pb: &Vec<u8>) -> OutRets {
+pub(crate) fn vm_invoke(ctx_ptr: usize, args_pb: &Vec<u8>) -> OutRets {
     match InArgs::parse_from_bytes(&args_pb) {
         Ok(vm_args) => {
-            handle(vm_args)
+            handle(ctx_ptr, vm_args)
         }
         Err(err) => {
             ERR_CODE_PROTO.to_code_msg(err).into()
@@ -73,17 +80,18 @@ pub(crate) fn vm_invoke(args_pb: &Vec<u8>) -> OutRets {
 }
 
 
-fn handle(args: InArgs) -> OutRets {
+fn handle(ctx_ptr: usize, args: InArgs) -> OutRets {
     let res: Result<Any> = MUX.read().unwrap()
                               .get(&args.get_method())
                               .ok_or_else(|| {
                                   ERR_CODE_NONE.to_code_msg(format!("undefined virtual machine method({})", args.get_method()))
-                              })?(args.get_data());
+                              })?(ctx_ptr, args.get_data());
     match res {
         Ok(a) => a.into(),
         Err(e) => e.into(),
     }
 }
+
 
 pub(crate) struct WasmHandlerApi();
 

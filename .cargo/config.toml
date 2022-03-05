@@ -9,5 +9,5 @@ paths = [
 vcs = "none"
 [alias]
 wasm = "build --target=wasm32-wasi --example"
-vm = "run --example=vm -- --path_prefix=../../wasm32-wasi/debug/examples"
-avm = "run --example=avm -- --path_prefix=../../wasm32-wasi/debug/examples"
+svm = "run --example=svm -- --path_prefix=../../wasm32-wasi/debug/examples"
+dvm = "run --example=dvm -- --path_prefix=../../wasm32-wasi/debug/examples"

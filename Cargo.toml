@@ -20,11 +20,11 @@ wasmy-vm = "0.4.2"
 structopt = { version = "0.3", features = ["color"] }
 tokio = { version = "1.17.0", features = ["macros", "rt", "rt-multi-thread"] }
 [[example]]
-name = "vm"
-path = "./examples/vm/vm.rs"
+name = "svm"
+path = "examples/vm/svm.rs"
 [[example]]
-name = "avm"
-path = "./examples/vm/avm.rs"
+name = "dvm"
+path = "examples/vm/dvm.rs"
 
 
 [target.'cfg(target_family="wasm")'.dependencies]

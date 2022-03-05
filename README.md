@@ -5,12 +5,13 @@ wasmy, easily customize my wasm app!
 ## features
 
 - [x] Completely shield vm-wasm interaction details
-- [x] Use protobuf as the interaction protocol
 - [x] Simple and flexible ABI, supports freely adding vm and wasm handlers using attribute macros (`#[vm_handle(0)]`
   /`#[wasm_handle(0)]`)
 - [x] Provide attribute macro `#[wasm_onload]` support to initialize wasm
 - [x] Support multi-threaded concurrency
 - [x] Provides context, layering friendly
+- [x] Features a security sandbox
+- [x] Use protobuf as the interaction protocol
 
 ## crates
 

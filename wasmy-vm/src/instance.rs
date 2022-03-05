@@ -93,22 +93,24 @@ pub(crate) struct Instance {
 
 #[derive(Clone, Debug)]
 pub(crate) struct Context {
+    ctx_ptr: usize,
     ctx_bytes: Vec<u8>,
     swap_memory: Vec<u8>,
 }
 
 impl Context {
     fn with_capacity(capacity: usize) -> Self {
-        Self { ctx_bytes: Vec::with_capacity(capacity), swap_memory: Vec::with_capacity(capacity) }
+        Self { ctx_ptr: 0, ctx_bytes: Vec::with_capacity(capacity), swap_memory: Vec::with_capacity(capacity) }
     }
 
-    fn set_args<M: Message>(&mut self, ctx: Option<M>, in_args: InArgs) -> (usize, usize) {
+    fn set_args<C: Message>(&mut self, ctx: Option<&C>, in_args: InArgs) -> (usize, usize) {
         let args_size = write_to_vec(&in_args, &mut self.swap_memory);
         if args_size == 0 {
             unsafe { self.swap_memory.set_len(0) }
         }
         let ctx_size = if let Some(ctx) = ctx {
-            write_to_vec(&ctx, &mut self.ctx_bytes)
+            self.ctx_ptr = ctx as *const C as usize;
+            write_to_vec(ctx, &mut self.ctx_bytes)
         } else {
             unsafe { self.ctx_bytes.set_len(0) };
             0
@@ -203,9 +205,10 @@ impl Instance {
                 let key = &ins_env.key;
                 #[cfg(debug_assertions)] println!("[VM:{:?}]_vm_invoke: wasm_uri={}, offset={}, size={}", key.thread_id, key.wasm_uri, offset, size);
                 let ins = ins_env.as_instance();
+                let ctx_ptr = ins.context.borrow().ctx_ptr;
                 ins.use_ctx_swap_memory(size as usize, |buffer| {
                     ins.read_view_bytes(offset as usize, size as usize, buffer);
-                    write_to_vec(&vm_invoke(buffer), buffer)
+                    write_to_vec(&vm_invoke(ctx_ptr, buffer), buffer)
                 }) as i32
             }),
         }));
@@ -239,7 +242,7 @@ impl Instance {
     pub(crate) fn call_wasm_handler<C: Message>(&self, ctx: Option<C>, method: Method, in_args: InArgs) -> Result<OutRets> {
         self.check_loaded()?;
         #[cfg(debug_assertions)] println!("method={}, data={:?}", in_args.get_method(), in_args.get_data());
-        let (ctx_size, args_size) = self.context.borrow_mut().set_args(ctx, in_args);
+        let (ctx_size, args_size) = self.context.borrow_mut().set_args(ctx.as_ref(), in_args);
         let sign_name = WasmHandlerApi::method_to_symbol(method);
         self.invoke_instance(&sign_name, Some((ctx_size as i32, args_size as i32)))?;
         Ok(self.context.borrow_mut().out_rets())

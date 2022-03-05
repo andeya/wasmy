@@ -12,6 +12,11 @@ use syn::{FnArg, ItemFn, Pat, Signature};
 /// #[vm_handle(123)]
 /// fn xxx<A: wasmy_abi::Message, R: wasmy_abi::Message>(args: A) -> wasmy_abi::Result<R> {todo!()}
 /// ```
+/// or with context
+/// ```
+/// #[vm_handle(123)]
+/// fn yyy<C: wasmy_abi::Message, A: wasmy_abi::Message, R: wasmy_abi::Message>(ctx: Option<&C>, args: A) -> wasmy_abi::Result<R> {todo!()}
+/// ```
 /// command to check expanded code: `cargo +nightly rustc -- -Zunstable-options --pretty=expanded`
 #[proc_macro_attribute]
 #[cfg(not(test))] // Work around for rust-lang/rust#62127
@@ -21,20 +26,39 @@ pub fn vm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
         panic!("vm_handle: VmMessage({})<0", method);
     }
     let raw_item = proc_macro2::TokenStream::from(item.clone());
-    let raw_ident = syn::parse_macro_input!(item as syn::ItemFn).sig.ident;
+    let raw_sig = syn::parse_macro_input!(item as ItemFn).sig;
+    let has_ctx = raw_sig.inputs.len() == 2;
+    let raw_ident = raw_sig.ident;
     let new_ident = Ident::new(&format!("_vm_handle_{}", method), Span::call_site());
-    let new_item = quote! {
-        #raw_item
+
+    let new_item = if has_ctx {
+        quote! {
+            #raw_item
 
 
-        #[allow(redundant_semicolons)]
-        fn #new_ident(args: &::wasmy_vm::Any) -> ::wasmy_vm::Result<::wasmy_vm::Any> {
-            #raw_ident(::wasmy_vm::VmHandlerApi::unpack_any(args)?).and_then(|res|::wasmy_vm::VmHandlerApi::pack_any(res))
+            #[allow(redundant_semicolons)]
+            fn #new_ident(ctx_ptr: usize, args: &::wasmy_vm::Any) -> ::wasmy_vm::Result<::wasmy_vm::Any> {
+                #raw_ident(unsafe{::wasmy_vm::VmHandlerApi::try_as(ctx_ptr)}, ::wasmy_vm::VmHandlerApi::unpack_any(args)?).and_then(|res|::wasmy_vm::VmHandlerApi::pack_any(res))
+            }
+            ::wasmy_vm::submit_handler!{
+               ::wasmy_vm::VmHandlerApi::new(#method, #new_ident)
+            }
         }
-        ::wasmy_vm::submit_handler!{
-           ::wasmy_vm::VmHandlerApi::new(#method, #new_ident)
+    } else {
+        quote! {
+            #raw_item
+
+
+            #[allow(redundant_semicolons)]
+            fn #new_ident(_ctx_ptr: usize, args: &::wasmy_vm::Any) -> ::wasmy_vm::Result<::wasmy_vm::Any> {
+                #raw_ident(::wasmy_vm::VmHandlerApi::unpack_any(args)?).and_then(|res|::wasmy_vm::VmHandlerApi::pack_any(res))
+            }
+            ::wasmy_vm::submit_handler!{
+               ::wasmy_vm::VmHandlerApi::new(#method, #new_ident)
+            }
         }
     };
+
     #[cfg(debug_assertions)] println!("{}", new_item);
     TokenStream::from(new_item)
 }
@@ -44,13 +68,8 @@ pub fn vm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
 /// format description: `#[wasm_handle(wasmy_abi::Method)]`
 /// example:
 /// ```
-/// #[wasm_handle(123)]
-/// fn xxx<A: wasmy_abi::Message, R: wasmy_abi::Message>(args: A) -> wasmy_abi::Result<R> {todo!()}
-/// ```
-/// or with context
-/// ```
 /// #[vm_handle(123)]
-/// fn yyy<C: wasmy_abi::Message, A: wasmy_abi::Message, R: wasmy_abi::Message>(ctx: wasmy_abi::WasmCtx<C>, args: A) -> wasmy_abi::Result<R> {todo!()}
+/// fn xxx<C: wasmy_abi::Message, A: wasmy_abi::Message, R: wasmy_abi::Message>(ctx: wasmy_abi::WasmCtx<C>, args: A) -> wasmy_abi::Result<R> {todo!()}
 /// ```
 /// command to check expanded code: `cargo +nightly rustc -- -Zunstable-options --pretty=expanded`
 #[proc_macro_attribute]
