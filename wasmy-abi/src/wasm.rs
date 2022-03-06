@@ -49,6 +49,7 @@ pub fn wasm_handle<F, W, Value>(ctx_size: i32, args_size: i32, handle: F)
     unsafe { _vm_restore(buffer.as_ptr() as i32, buffer.len() as i32) };
 }
 
+/// WasmContext is wasm context abstraction.
 pub trait WasmContext<Value: Message = Empty> {
     fn from_size(size: usize) -> Self;
     fn size(&self) -> usize;

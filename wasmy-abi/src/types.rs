@@ -15,6 +15,7 @@ pub type VmMethod = Method;
 pub type CtxId = i32;
 pub type Result<T> = std::result::Result<T, CodeMsg>;
 
+/// Default WasmContext implementation.
 #[derive(Debug, Clone)]
 pub struct WasmCtx<C: Message = Empty> {
     pub(crate) size: usize,

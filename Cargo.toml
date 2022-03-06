@@ -1,6 +1,6 @@
 [package]
 name = "wasmy"
-version = "0.5.0"
+version = "0.5.1"
 edition = "2021"
 resolver = "2"
 authors = ["henrylee2cn <henrylee2cn@gmail.com>"]
@@ -16,7 +16,7 @@ readme = "./README.md"
 
 
 [target.'cfg(not(target_family="wasm"))'.dependencies]
-wasmy-vm = "0.5.0"
+wasmy-vm = "0.5.1"
 structopt = { version = "0.3", features = ["color"] }
 tokio = { version = "1.17.0", features = ["macros", "rt", "rt-multi-thread"] }
 [[example]]
@@ -28,7 +28,7 @@ path = "examples/vm/dvm.rs"
 
 
 [target.'cfg(target_family="wasm")'.dependencies]
-wasmy-abi = "0.5.0"
+wasmy-abi = "0.5.1"
 rand = "0.8.4"
 [[example]]
 crate-type = ['cdylib']

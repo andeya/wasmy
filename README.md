@@ -15,21 +15,21 @@ wasmy, easily customize my wasm app!
 
 ## crates
 
-- [wasmy-vm](https://docs.rs/wasmy-vm/latest/wasmy_vm/index.html) : vm dependencies
+- [wasmy-vm crate](https://docs.rs/wasmy-vm/latest/wasmy_vm/index.html) : vm dependencies
 
 ```toml
 [dependencies]
 wasmy-vm = "0.5"
 ```
 
-- [wasmy-abi](https://docs.rs/wasmy-abi/latest/wasmy_abi/index.html) : wasm dependencies
+- [wasmy-abi crate](https://docs.rs/wasmy-abi/latest/wasmy_abi/index.html) : wasm dependencies
 
 ```toml
 [dependencies]
 wasmy-abi = "0.5"
 ```
 
-- [wasmy-macros](https://docs.rs/wasmy-macros/latest/wasmy_macros/index.html) : no direct dependency
+- [wasmy-macros crate](https://docs.rs/wasmy-macros/latest/wasmy_macros/index.html) : no direct dependency
 
 ```toml
 wasmy-macros = "0.5"
