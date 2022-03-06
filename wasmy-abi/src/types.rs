@@ -40,10 +40,12 @@ impl CodeMsg {
     }
 }
 
-pub const ERR_CODE_UNKNOWN: i32 = -1;
-pub const ERR_CODE_PROTO: i32 = -2;
-pub const ERR_CODE_NONE: i32 = -3;
-pub const ERR_CODE_MEM: i32 = -4;
+pub type RetCode = i32;
+
+pub const CODE_UNKNOWN: RetCode = -1;
+pub const CODE_PROTO: RetCode = -2;
+pub const CODE_NONE: RetCode = -3;
+pub const CODE_MEM: RetCode = -4;
 
 impl std::fmt::Display for CodeMsg {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -56,7 +58,7 @@ impl From<anyhow::Error> for CodeMsg {
         if e.is::<CodeMsg>() {
             e.downcast().unwrap()
         } else {
-            CodeMsg::new(ERR_CODE_UNKNOWN, e)
+            CodeMsg::new(CODE_UNKNOWN, e)
         }
     }
 }
@@ -69,13 +71,13 @@ impl From<CodeMsg> for anyhow::Error {
 
 impl From<std::io::Error> for CodeMsg {
     fn from(e: std::io::Error) -> Self {
-        CodeMsg::new(ERR_CODE_UNKNOWN, format!("io: {}", e))
+        CodeMsg::new(CODE_UNKNOWN, format!("io: {}", e))
     }
 }
 
 impl From<protobuf::ProtobufError> for CodeMsg {
     fn from(e: protobuf::ProtobufError) -> Self {
-        CodeMsg::new(ERR_CODE_PROTO, format!("protobuf: {}", e))
+        CodeMsg::new(CODE_PROTO, format!("protobuf: {}", e))
     }
 }
 
@@ -87,7 +89,7 @@ impl<R: Message> From<OutRets> for Result<R> {
         out_rets.get_data()
                 .unpack::<R>()?
             .map_or_else(
-                || CodeMsg::result(ERR_CODE_PROTO, "protobuf: the message type does not match the out_rets"),
+                || CodeMsg::result(CODE_PROTO, "protobuf: the message type does not match the out_rets"),
                 |data| Ok(data),
             )
     }
@@ -104,7 +106,7 @@ impl InArgs {
         self.get_data()
             .unpack::<R>()?
             .map_or_else(
-                || CodeMsg::result(ERR_CODE_PROTO, "protobuf: the message type does not match the in_args"),
+                || CodeMsg::result(CODE_PROTO, "protobuf: the message type does not match the in_args"),
                 |data| Ok(data),
             )
     }
@@ -113,7 +115,7 @@ impl InArgs {
 pub fn unpack_any<R: Message>(data: &Any) -> Result<R> {
     data.unpack::<R>()?
         .map_or_else(
-            || CodeMsg::result(ERR_CODE_PROTO, "protobuf: the message type does not match the data"),
+            || CodeMsg::result(CODE_PROTO, "protobuf: the message type does not match the data"),
             |r| Ok(r),
         )
 }
@@ -157,7 +159,7 @@ impl<R: Message> From<Result<R>> for OutRets {
                         res.set_data(data);
                     }
                     Err(err) => {
-                        res.set_code(ERR_CODE_PROTO);
+                        res.set_code(CODE_PROTO);
                         res.set_msg(err.to_string());
                     }
                 }
@@ -170,7 +172,7 @@ impl<R: Message> From<Result<R>> for OutRets {
 
 impl FromResidual<Option<Infallible>> for OutRets {
     fn from_residual(_residual: Option<Infallible>) -> Self {
-        CodeMsg::new(ERR_CODE_NONE, "not found").into()
+        CodeMsg::new(CODE_NONE, "not found").into()
     }
 }
 

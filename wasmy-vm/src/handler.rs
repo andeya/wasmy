@@ -74,7 +74,7 @@ pub(crate) fn vm_invoke(ctx_ptr: usize, args_pb: &Vec<u8>) -> OutRets {
             handle(ctx_ptr, vm_args)
         }
         Err(err) => {
-           CodeMsg::new(ERR_CODE_PROTO, err).into()
+           CodeMsg::new(CODE_PROTO, err).into()
         }
     }
 }
@@ -84,7 +84,7 @@ fn handle(ctx_ptr: usize, args: InArgs) -> OutRets {
     let res: Result<Any> = MUX.read().unwrap()
                               .get(&args.get_method())
                               .ok_or_else(|| {
-                                  CodeMsg::new(ERR_CODE_NONE, format!("undefined virtual machine method({})", args.get_method()))
+                                  CodeMsg::new(CODE_NONE, format!("undefined virtual machine method({})", args.get_method()))
                               })?(ctx_ptr, args.get_data());
     match res {
         Ok(a) => a.into(),

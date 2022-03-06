@@ -27,7 +27,7 @@ fn multiply(ctx: WasmCtx<TestCtx>, args: TestArgs) -> Result<TestRets> {
             println!("[Wasm-Simple({})] STATE={}, method({}) ctx={:?}, ctx_value={:?}, args={{{:?}}}", rid, STATE, 0, ctx, value, args);
         },
         Err(err) => match err.code {
-            ERR_CODE_NONE => unsafe {
+            CODE_NONE => unsafe {
                 println!("[Wasm-Simple({})] STATE={}, method({}) ctx={:?}, args={{{:?}}}", rid, STATE, 0, ctx, args);
             }
             _ => { return err.into_result(); }
@@ -81,7 +81,7 @@ fn multiply(ctx: WasmCtx<TestCtx>, args: TestArgs) -> Result<TestRets> {
 //             },
 //         Err(err) => match err.code
 //         {
-//             ERR_CODE_NONE => unsafe
+//             CODE_NONE => unsafe
 //                 {
 //                     println!("[Wasm-Simple({})] STATE={}, method({}) ctx={:?}, args={{{:?}}}",
 //                              rid, STATE, 0, ctx, args);
@@ -117,3 +117,4 @@ fn multiply(ctx: WasmCtx<TestCtx>, args: TestArgs) -> Result<TestRets> {
 //     ::
 //     wasmy_abi::wasm_handle(ctx_size, args_size, _inner)
 // }
+
