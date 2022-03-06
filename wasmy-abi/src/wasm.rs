@@ -33,7 +33,7 @@ pub fn wasm_handle<F, C>(ctx_size: i32, args_size: i32, handle: F)
             handle(WasmCtx::from_size(ctx_size as usize), args).into()
         }
         Err(err) => {
-            ERR_CODE_PROTO.to_code_msg(err).into()
+            CodeMsg::new(ERR_CODE_PROTO, err).into()
         }
     };
     let size = res.compute_size() as usize;
@@ -54,7 +54,8 @@ impl<C: Message> WasmCtx<C> {
     }
     pub fn try_value(&self) -> Result<C> {
         if self.size == 0 {
-            Ok(C::new())
+            CodeMsg::result(ERR_CODE_NONE, "the value of the context is not passed")
+            // Ok(C::new())
         } else {
             let buffer = vec![0u8; self.size];
             unsafe { _vm_recall(IS_CTX, buffer.as_ptr() as i32) };
@@ -63,7 +64,7 @@ impl<C: Message> WasmCtx<C> {
                     Ok(ctx)
                 }
                 Err(err) => {
-                    Err(ERR_CODE_PROTO.to_code_msg(err))
+                    CodeMsg::result(ERR_CODE_PROTO, err)
                 }
             }
         }

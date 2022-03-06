@@ -20,12 +20,20 @@ fn init() {
 
 #[wasm_handle(0)]
 fn multiply(ctx: WasmCtx<TestCtx>, args: TestArgs) -> Result<TestRets> {
+    unsafe { STATE += 1; }
     let rid = random::<u8>() as i32;
-    let info = ctx.try_value()?;
-    unsafe {
-        STATE += 1;
-        println!("[Wasm-Simple({})] STATE={}, method({}) ctx={:?}, args={{{:?}}}", rid, STATE, 0, info, args);
+    match ctx.try_value() {
+        Ok(value) => unsafe {
+            println!("[Wasm-Simple({})] STATE={}, method({}) ctx={:?}, ctx_value={:?}, args={{{:?}}}", rid, STATE, 0, ctx, value, args);
+        },
+        Err(err) => match err.code {
+            ERR_CODE_NONE => unsafe {
+                println!("[Wasm-Simple({})] STATE={}, method({}) ctx={:?}, args={{{:?}}}", rid, STATE, 0, ctx, args);
+            }
+            _ => { return err.into_result(); }
+        },
     }
+
     let mut vm_args = TestArgs::new();
     vm_args.a = rid;
     vm_args.b = rid;
@@ -61,14 +69,26 @@ fn multiply(ctx: WasmCtx<TestCtx>, args: TestArgs) -> Result<TestRets> {
 //
 // fn multiply(ctx: WasmCtx<TestCtx>, args: TestArgs) -> Result<TestRets>
 // {
+//     unsafe { STATE += 1; }
 //     let rid = random::<u8>() as i32;
-//     let info = ctx.try_value()?;
-//     unsafe
+//     match
+//     ctx.try_value()
+//     {
+//         Ok(value) => unsafe
+//             {
+//                 println!("[Wasm-Simple({})] STATE={}, method({}) ctx={:?}, ctx_value={:?}, args={{{:?}}}",
+//                          rid, STATE, 0, ctx, value, args);
+//             },
+//         Err(err) => match err.code
 //         {
-//             STATE += 1;
-//             println!("[Wasm-Simple({})] STATE={}, method({}) ctx={:?}, args={{{:?}}}",
-//                      rid, STATE, 0, info, args);
-//         }
+//             ERR_CODE_NONE => unsafe
+//                 {
+//                     println!("[Wasm-Simple({})] STATE={}, method({}) ctx={:?}, args={{{:?}}}",
+//                              rid, STATE, 0, ctx, args);
+//                 }
+//             _ => { return err.into_result(); }
+//         },
+//     }
 //     let mut vm_args = TestArgs::new();
 //     vm_args.a = rid;
 //     vm_args.b = rid

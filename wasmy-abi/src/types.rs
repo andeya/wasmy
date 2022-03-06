@@ -2,7 +2,7 @@ use std::convert::Infallible;
 use std::fmt::Formatter;
 use std::marker::PhantomData;
 use std::mem;
-use std::ops::{Deref, FromResidual};
+use std::ops::FromResidual;
 
 pub use protobuf::{CodedOutputStream, Message, ProtobufEnum};
 pub use protobuf::well_known_types::Any;
@@ -35,45 +35,15 @@ impl CodeMsg {
     pub fn result<T, S: ToString>(code: i32, msg: S) -> Result<T> {
         Err(Self::new(code, msg))
     }
-}
-
-pub const ERR_CODE_UNKNOWN: ErrCode = ErrCode(-1);
-pub const ERR_CODE_PROTO: ErrCode = ErrCode(-2);
-pub const ERR_CODE_NONE: ErrCode = ErrCode(-3);
-pub const ERR_CODE_MEM: ErrCode = ErrCode(-4);
-
-pub struct ErrCode(i32);
-
-impl ErrCode {
-    pub const fn from(i: i32) -> Self {
-        Self(i)
-    }
-    pub fn value(&self) -> i32 {
-        self.0
-    }
-    #[inline]
-    pub fn to_code_msg<S: ToString>(&self, msg: S) -> CodeMsg {
-        CodeMsg::new(self.0, msg)
-    }
-    #[inline]
-    pub fn to_result<T, S: ToString>(&self, msg: S) -> Result<T> {
-        CodeMsg::result(self.0, msg)
+    pub fn into_result<T>(self) -> Result<T> {
+        Err(self)
     }
 }
 
-impl Into<ErrCode> for i32 {
-    fn into(self) -> ErrCode {
-        ErrCode(self)
-    }
-}
-
-impl Deref for ErrCode {
-    type Target = i32;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
+pub const ERR_CODE_UNKNOWN: i32 = -1;
+pub const ERR_CODE_PROTO: i32 = -2;
+pub const ERR_CODE_NONE: i32 = -3;
+pub const ERR_CODE_MEM: i32 = -4;
 
 impl std::fmt::Display for CodeMsg {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -86,7 +56,7 @@ impl From<anyhow::Error> for CodeMsg {
         if e.is::<CodeMsg>() {
             e.downcast().unwrap()
         } else {
-            ERR_CODE_UNKNOWN.to_code_msg(e)
+            CodeMsg::new(ERR_CODE_UNKNOWN, e)
         }
     }
 }
@@ -99,13 +69,13 @@ impl From<CodeMsg> for anyhow::Error {
 
 impl From<std::io::Error> for CodeMsg {
     fn from(e: std::io::Error) -> Self {
-        ERR_CODE_UNKNOWN.to_code_msg(format!("io: {}", e))
+        CodeMsg::new(ERR_CODE_UNKNOWN, format!("io: {}", e))
     }
 }
 
 impl From<protobuf::ProtobufError> for CodeMsg {
     fn from(e: protobuf::ProtobufError) -> Self {
-        ERR_CODE_PROTO.to_code_msg(format!("protobuf: {}", e))
+        CodeMsg::new(ERR_CODE_PROTO, format!("protobuf: {}", e))
     }
 }
 
@@ -117,7 +87,7 @@ impl<R: Message> From<OutRets> for Result<R> {
         out_rets.get_data()
                 .unpack::<R>()?
             .map_or_else(
-                || ERR_CODE_PROTO.to_result("protobuf: the message type does not match the out_rets"),
+                || CodeMsg::result(ERR_CODE_PROTO, "protobuf: the message type does not match the out_rets"),
                 |data| Ok(data),
             )
     }
@@ -134,7 +104,7 @@ impl InArgs {
         self.get_data()
             .unpack::<R>()?
             .map_or_else(
-                || ERR_CODE_PROTO.to_result("protobuf: the message type does not match the in_args"),
+                || CodeMsg::result(ERR_CODE_PROTO, "protobuf: the message type does not match the in_args"),
                 |data| Ok(data),
             )
     }
@@ -143,7 +113,7 @@ impl InArgs {
 pub fn unpack_any<R: Message>(data: &Any) -> Result<R> {
     data.unpack::<R>()?
         .map_or_else(
-            || ERR_CODE_PROTO.to_result("protobuf: the message type does not match the data"),
+            || CodeMsg::result(ERR_CODE_PROTO, "protobuf: the message type does not match the data"),
             |r| Ok(r),
         )
 }
@@ -187,7 +157,7 @@ impl<R: Message> From<Result<R>> for OutRets {
                         res.set_data(data);
                     }
                     Err(err) => {
-                        res.set_code(ERR_CODE_PROTO.0);
+                        res.set_code(ERR_CODE_PROTO);
                         res.set_msg(err.to_string());
                     }
                 }
@@ -200,7 +170,7 @@ impl<R: Message> From<Result<R>> for OutRets {
 
 impl FromResidual<Option<Infallible>> for OutRets {
     fn from_residual(_residual: Option<Infallible>) -> Self {
-        ERR_CODE_NONE.to_code_msg("not found").into()
+        CodeMsg::new(ERR_CODE_NONE, "not found").into()
     }
 }
 

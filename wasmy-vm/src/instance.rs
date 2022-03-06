@@ -218,7 +218,7 @@ impl Instance {
 
     fn init(&self) -> anyhow::Result<()> {
         let ret = self.invoke_instance(WasmHandlerApi::onload_symbol(), None).map_or_else(|e| {
-            if e.code == ERR_CODE_NONE.value() {
+            if e.code == ERR_CODE_NONE {
                 #[cfg(debug_assertions)]println!("[{:?}]no need initialize instance: wasm_uri={}", self.key.thread_id, self.key.wasm_uri);
                 Ok(())
             } else {
@@ -235,7 +235,7 @@ impl Instance {
         if self.loaded.get() {
             Ok(())
         } else {
-            ERR_CODE_NONE.to_result("instance has not completed initialization")
+            CodeMsg::result(ERR_CODE_NONE, "instance has not completed initialization")
         }
     }
     #[inline]
@@ -253,12 +253,12 @@ impl Instance {
             let ret = if let Some((ctx_size, args_size)) = args.clone() {
                 exports
                     .get_native_function::<(i32, i32), ()>(sign_name)
-                    .map_err(|e| ERR_CODE_NONE.to_code_msg(e))?
+                    .map_err(|e| CodeMsg::new(ERR_CODE_NONE, e))?
                     .call(ctx_size, args_size)
             } else {
                 exports
                     .get_native_function::<(), ()>(sign_name)
-                    .map_err(|e| ERR_CODE_NONE.to_code_msg(e))?
+                    .map_err(|e| CodeMsg::new(ERR_CODE_NONE, e))?
                     .call()
             };
             if let Err(e) = ret {
@@ -270,7 +270,7 @@ impl Instance {
                             println!("memory grow, previous memory size: {:?}", p);
                         }
                         Err(e) => {
-                            return ERR_CODE_MEM.to_result(format!("failed to memory grow: {:?}", e))
+                            return CodeMsg::result(ERR_CODE_MEM, format!("failed to memory grow: {:?}", e))
                         }
                     }
                 }
