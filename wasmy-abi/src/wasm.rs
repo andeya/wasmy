@@ -18,10 +18,11 @@ const NON_CTX: i32 = 0;
 const IS_CTX: i32 = 1;
 
 /// The underlying function of wasm to handle requests.
-pub fn wasm_handle<F, C>(ctx_size: i32, args_size: i32, handle: F)
+pub fn wasm_handle<F, W, Value>(ctx_size: i32, args_size: i32, handle: F)
     where
-        F: Fn(WasmCtx<C>, InArgs) -> Result<Any>,
-        C: Message,
+        F: Fn(W, InArgs) -> Result<Any>,
+        W: WasmContext<Value>,
+        Value: Message,
 {
     if args_size <= 0 {
         return;
@@ -30,7 +31,7 @@ pub fn wasm_handle<F, C>(ctx_size: i32, args_size: i32, handle: F)
     unsafe { _vm_recall(NON_CTX, buffer.as_ptr() as i32) };
     let res: OutRets = match InArgs::parse_from_bytes(&buffer) {
         Ok(args) => {
-            handle(WasmCtx::from_size(ctx_size as usize), args).into()
+            handle(W::from_size(ctx_size as usize), args).into()
         }
         Err(err) => {
             CodeMsg::new(CODE_PROTO, err).into()
@@ -48,18 +49,17 @@ pub fn wasm_handle<F, C>(ctx_size: i32, args_size: i32, handle: F)
     unsafe { _vm_restore(buffer.as_ptr() as i32, buffer.len() as i32) };
 }
 
-impl<C: Message> WasmCtx<C> {
-    fn from_size(size: usize) -> Self {
-        Self { size, _priv: PhantomData }
-    }
-    pub fn try_value(&self) -> Result<C> {
-        if self.size == 0 {
+pub trait WasmContext<Value: Message = Empty> {
+    fn from_size(size: usize) -> Self;
+    fn size(&self) -> usize;
+    fn try_value(&self) -> Result<Value> {
+        if self.size() == 0 {
             CodeMsg::result(CODE_NONE, "the value of the context is not passed")
             // Ok(C::new())
         } else {
-            let buffer = vec![0u8; self.size];
+            let buffer = vec![0u8; self.size()];
             unsafe { _vm_recall(IS_CTX, buffer.as_ptr() as i32) };
-            match C::parse_from_bytes(&buffer) {
+            match Value::parse_from_bytes(&buffer) {
                 Ok(ctx) => {
                     Ok(ctx)
                 }
@@ -69,7 +69,7 @@ impl<C: Message> WasmCtx<C> {
             }
         }
     }
-    pub fn call_vm<M: Message, R: Message>(&self, method: VmMethod, data: M) -> Result<R> {
+    fn call_vm<M: Message, R: Message>(&self, method: VmMethod, data: M) -> Result<R> {
         let args = InArgs::try_new(method, data)?;
         let mut buffer = args.write_to_bytes().unwrap();
         let size = unsafe { _vm_invoke(buffer.as_ptr() as i32, buffer.len() as i32) };
@@ -80,5 +80,14 @@ impl<C: Message> WasmCtx<C> {
         unsafe { _vm_recall(NON_CTX, buffer.as_ptr() as i32) };
         OutRets::parse_from_bytes(buffer.as_slice())?
             .into()
+    }
+}
+
+impl<Value: Message> WasmContext<Value> for WasmCtx<Value> {
+    fn from_size(size: usize) -> Self {
+        Self { size, _priv: PhantomData }
+    }
+    fn size(&self) -> usize {
+        self.size
     }
 }

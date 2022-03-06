@@ -54,4 +54,3 @@ fn multiply(ctx: WasmCtx, args: TestArgs) -> Result<TestRets> {
 //     ::
 //     wasmy_abi::wasm_handle(ctx_size, args_size, _inner)
 // }
-

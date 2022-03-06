@@ -8,7 +8,7 @@ use tokio;
 
 use wasmy_vm::*;
 
-use crate::test::{TestArgs, TestCtx, TestRets};
+use crate::test::{TestArgs, TestCtxValue, TestRets};
 
 /// vm cli flags
 #[derive(StructOpt, Debug)]
@@ -38,8 +38,8 @@ fn main() {
 
     let wasm_caller = load_wasm(wasm_path).unwrap();
 
-    let mut ctx = TestCtx::new();
-    ctx.set_ctx(env!("CARGO_PKG_VERSION").to_string());
+    let mut ctx = TestCtxValue::new();
+    ctx.set_value(env!("CARGO_PKG_VERSION").to_string());
     println!("[main] ctx={:?}", ctx);
 
     let mut data = TestArgs::new();
@@ -77,8 +77,8 @@ fn main() {
 
 // Make sure the mod is linked
 fn link_mod() {
-    #[vm_handle(0)]
-    fn add(ctx: Option<&TestCtx>, args: TestArgs) -> Result<TestRets> {
+    #[vm_handle(method = 0)]
+    fn add(ctx: Option<&TestCtxValue>, args: TestArgs) -> Result<TestRets> {
         println!("[VM] add handler, ctx={:?}", ctx);
         let mut rets = TestRets::new();
         rets.set_c(args.a + args.b);
@@ -90,7 +90,8 @@ fn link_mod() {
 
 // Expanded codes:
 //
-// fn add(ctx: Option<&TestCtx>, args: TestArgs) -> Result<TestRets>
+// fn add(ctx: Option<&TestCtxValue>, args: TestArgs) -> Result<TestRets
+// >
 // {
 //     println!("[VM] add handler, ctx={:?}", ctx);
 //     let mut rets = TestRets::
@@ -108,4 +109,3 @@ fn link_mod() {
 //     ::VmHandlerApi::unpack_any(args)
 //         ?).and_then(|res| ::wasmy_vm::VmHandlerApi::pack_any(res))
 // } ::wasmy_vm::submit_handler! { :: wasmy_vm :: VmHandlerApi :: new(0i32, _vm_handle_0) }
-

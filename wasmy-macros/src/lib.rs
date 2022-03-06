@@ -3,7 +3,11 @@ use std::ops::Deref;
 
 use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::{FnArg, ItemFn, Pat, Signature};
+use syn::{FnArg, ItemFn, Lit, Pat, Signature};
+use syn::parse::Parser;
+
+// syn::AttributeArgs does not implement syn::Parse
+type AttributeArgs = syn::punctuated::Punctuated<syn::NestedMeta, syn::Token![,]>;
 
 /// Register vm's ABI for handling wasm callbacks.
 /// format description: `#[vm_handle(wasmy_abi::Method)]`
@@ -21,10 +25,7 @@ use syn::{FnArg, ItemFn, Pat, Signature};
 #[proc_macro_attribute]
 #[cfg(not(test))] // Work around for rust-lang/rust#62127
 pub fn vm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
-    let method = args.to_string().parse::<i32>().expect("expect #[vm_handle(wasmy_abi::VmMessage)]");
-    if method < 0 {
-        panic!("vm_handle: VmMessage({})<0", method);
-    }
+    let method = parse_method("vm_handle", args).unwrap();
     let raw_item = proc_macro2::TokenStream::from(item.clone());
     let raw_sig = syn::parse_macro_input!(item as ItemFn).sig;
     let has_ctx = raw_sig.inputs.len() == 2;
@@ -63,22 +64,19 @@ pub fn vm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
     TokenStream::from(new_item)
 }
 
-
 /// Register wasm's ABI for handling requests.
-/// format description: `#[wasm_handle(wasmy_abi::Method)]`
+/// format description: `#[wasm_handle(i32)] or #[wasm_handle(method=i32)]`
 /// example:
 /// ```
-/// #[vm_handle(123)]
-/// fn xxx<C: wasmy_abi::Message, A: wasmy_abi::Message, R: wasmy_abi::Message>(ctx: wasmy_abi::WasmCtx<C>, args: A) -> wasmy_abi::Result<R> {todo!()}
+/// #[wasm_handle(method=123)]
+/// fn xxx<W: wasmy_abi::WasmContext<Value>, Value: wasmy_abi::Message, A: wasmy_abi::Message, R: wasmy_abi::Message>(ctx: W, args: A) -> wasmy_abi::Result<R> {todo!()}
 /// ```
 /// command to check expanded code: `cargo +nightly rustc -- -Zunstable-options --pretty=expanded`
 #[proc_macro_attribute]
 #[cfg(not(test))] // Work around for rust-lang/rust#62127
 pub fn wasm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
-    let method = args.to_string().parse::<i32>().expect("expect #[wasm_handle(wasmy_abi::WasmMessage)]");
-    if method < 0 {
-        panic!("wasm_handle: WasmMessage({})<0", method);
-    }
+    // println!("{:?}", args);
+    let method = parse_method("wasm_handle", args).unwrap();
     let mut new_item = item.clone();
     let raw_sig = syn::parse_macro_input!(item as ItemFn).sig;
     let (inner_ident, inner_item) = wasm_gen_inner(raw_sig);
@@ -99,20 +97,12 @@ pub fn wasm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
     new_item
 }
 
+
 fn wasm_gen_inner(raw_sig: Signature) -> (Ident, proc_macro2::TokenStream) {
     let inner_ident = Ident::new("_inner", Span::call_site());
     let raw_ident = raw_sig.ident.clone();
     let raw_first_input = raw_sig.inputs.first().unwrap();
-    let fn_args;
-    if let FnArg::Typed(a) = raw_first_input {
-        if let Pat::Ident(ident) = a.pat.deref() {
-            fn_args = ident.ident.clone();
-        } else {
-            unreachable!()
-        }
-    } else {
-        unreachable!()
-    }
+    let fn_args = fn_arg_ident(raw_first_input);
     (inner_ident.clone(), quote! {
         #[allow(unused_mut)]
         #[inline]
@@ -148,4 +138,71 @@ pub fn wasm_onload(_args: TokenStream, item: TokenStream) -> TokenStream {
     };
     #[cfg(debug_assertions)] println!("{}", new_item);
     TokenStream::from(new_item)
+}
+
+fn parse_method(marco_name: &str, input: TokenStream) -> Result<i32, syn::Error> {
+    let method = input.to_string().parse::<i32>().unwrap_or(-1);
+    if method >= 0 {
+        return Ok(method);
+    }
+    let err = syn::Error::new_spanned(
+        proc_macro2::TokenStream::from(input.clone()),
+        format!("#[{0}(i32)] or #[{0}(method=i32)]", marco_name));
+    let attr = AttributeArgs::parse_terminated
+        .parse(input)
+        .or(Err(err.clone()))?;
+    for arg in attr {
+        match arg {
+            syn::NestedMeta::Meta(syn::Meta::NameValue(namevalue)) => {
+                let ident = namevalue
+                    .path
+                    .get_ident()
+                    .ok_or_else(|| {
+                        syn::Error::new_spanned(&namevalue, "Must have specified ident")
+                    })?
+                    .to_string()
+                    .to_lowercase();
+                match ident.as_str() {
+                    "method" => {
+                        if let Lit::Int(i) = &namevalue.lit {
+                            if let Ok(method) = i.base10_digits().parse::<i32>() {
+                                if method >= 0 {
+                                    return Ok(method);
+                                }
+                            }
+                        }
+                        return Err(syn::Error::new_spanned(namevalue, "attribute method is not i32 greater than or equal to 0"));
+                    }
+                    name => {
+                        let msg = format!(
+                            "Unknown attribute {} is specified; expected `method`",
+                            name,
+                        );
+                        return Err(syn::Error::new_spanned(namevalue, msg));
+                    }
+                }
+            }
+            other => {
+                return Err(syn::Error::new_spanned(
+                    other,
+                    "Unknown attribute inside the macro",
+                ));
+            }
+        }
+    }
+    return Err(err);
+}
+
+fn fn_arg_ident(arg: &FnArg) -> Ident {
+    let fn_args;
+    if let FnArg::Typed(a) = arg {
+        if let Pat::Ident(ident) = a.pat.deref() {
+            fn_args = ident.ident.clone();
+        } else {
+            unreachable!()
+        }
+    } else {
+        unreachable!()
+    }
+    fn_args
 }

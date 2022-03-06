@@ -370,9 +370,9 @@ impl ::protobuf::reflect::ProtobufValue for TestRets {
 
 #[derive(PartialEq,Clone,Default)]
 #[cfg_attr(feature = "with-serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct TestCtx {
+pub struct TestCtxValue {
     // message fields
-    pub ctx: ::std::string::String,
+    pub value: ::std::string::String,
     // special fields
     #[cfg_attr(feature = "with-serde", serde(skip))]
     pub unknown_fields: ::protobuf::UnknownFields,
@@ -380,45 +380,45 @@ pub struct TestCtx {
     pub cached_size: ::protobuf::CachedSize,
 }
 
-impl<'a> ::std::default::Default for &'a TestCtx {
-    fn default() -> &'a TestCtx {
-        <TestCtx as ::protobuf::Message>::default_instance()
+impl<'a> ::std::default::Default for &'a TestCtxValue {
+    fn default() -> &'a TestCtxValue {
+        <TestCtxValue as ::protobuf::Message>::default_instance()
     }
 }
 
-impl TestCtx {
-    pub fn new() -> TestCtx {
+impl TestCtxValue {
+    pub fn new() -> TestCtxValue {
         ::std::default::Default::default()
     }
 
-    // string ctx = 1;
+    // string value = 1;
 
 
-    pub fn get_ctx(&self) -> &str {
-        &self.ctx
+    pub fn get_value(&self) -> &str {
+        &self.value
     }
-    pub fn clear_ctx(&mut self) {
-        self.ctx.clear();
+    pub fn clear_value(&mut self) {
+        self.value.clear();
     }
 
     // Param is passed by value, moved
-    pub fn set_ctx(&mut self, v: ::std::string::String) {
-        self.ctx = v;
+    pub fn set_value(&mut self, v: ::std::string::String) {
+        self.value = v;
     }
 
     // Mutable pointer to the field.
     // If field is not initialized, it is initialized with default value first.
-    pub fn mut_ctx(&mut self) -> &mut ::std::string::String {
-        &mut self.ctx
+    pub fn mut_value(&mut self) -> &mut ::std::string::String {
+        &mut self.value
     }
 
     // Take field
-    pub fn take_ctx(&mut self) -> ::std::string::String {
-        ::std::mem::replace(&mut self.ctx, ::std::string::String::new())
+    pub fn take_value(&mut self) -> ::std::string::String {
+        ::std::mem::replace(&mut self.value, ::std::string::String::new())
     }
 }
 
-impl ::protobuf::Message for TestCtx {
+impl ::protobuf::Message for TestCtxValue {
     fn is_initialized(&self) -> bool {
         true
     }
@@ -428,7 +428,7 @@ impl ::protobuf::Message for TestCtx {
             let (field_number, wire_type) = is.read_tag_unpack()?;
             match field_number {
                 1 => {
-                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.ctx)?;
+                    ::protobuf::rt::read_singular_proto3_string_into(wire_type, is, &mut self.value)?;
                 },
                 _ => {
                     ::protobuf::rt::read_unknown_or_skip_group(field_number, wire_type, is, self.mut_unknown_fields())?;
@@ -442,8 +442,8 @@ impl ::protobuf::Message for TestCtx {
     #[allow(unused_variables)]
     fn compute_size(&self) -> u32 {
         let mut my_size = 0;
-        if !self.ctx.is_empty() {
-            my_size += ::protobuf::rt::string_size(1, &self.ctx);
+        if !self.value.is_empty() {
+            my_size += ::protobuf::rt::string_size(1, &self.value);
         }
         my_size += ::protobuf::rt::unknown_fields_size(self.get_unknown_fields());
         self.cached_size.set(my_size);
@@ -451,8 +451,8 @@ impl ::protobuf::Message for TestCtx {
     }
 
     fn write_to_with_cached_sizes(&self, os: &mut ::protobuf::CodedOutputStream<'_>) -> ::protobuf::ProtobufResult<()> {
-        if !self.ctx.is_empty() {
-            os.write_string(1, &self.ctx)?;
+        if !self.value.is_empty() {
+            os.write_string(1, &self.value)?;
         }
         os.write_unknown_fields(self.get_unknown_fields())?;
         ::std::result::Result::Ok(())
@@ -484,8 +484,8 @@ impl ::protobuf::Message for TestCtx {
         Self::descriptor_static()
     }
 
-    fn new() -> TestCtx {
-        TestCtx::new()
+    fn new() -> TestCtxValue {
+        TestCtxValue::new()
     }
 
     fn descriptor_static() -> &'static ::protobuf::reflect::MessageDescriptor {
@@ -493,38 +493,38 @@ impl ::protobuf::Message for TestCtx {
         descriptor.get(|| {
             let mut fields = ::std::vec::Vec::new();
             fields.push(::protobuf::reflect::accessor::make_simple_field_accessor::<_, ::protobuf::types::ProtobufTypeString>(
-                "ctx",
-                |m: &TestCtx| { &m.ctx },
-                |m: &mut TestCtx| { &mut m.ctx },
+                "value",
+                |m: &TestCtxValue| { &m.value },
+                |m: &mut TestCtxValue| { &mut m.value },
             ));
-            ::protobuf::reflect::MessageDescriptor::new_pb_name::<TestCtx>(
-                "TestCtx",
+            ::protobuf::reflect::MessageDescriptor::new_pb_name::<TestCtxValue>(
+                "TestCtxValue",
                 fields,
                 file_descriptor_proto()
             )
         })
     }
 
-    fn default_instance() -> &'static TestCtx {
-        static instance: ::protobuf::rt::LazyV2<TestCtx> = ::protobuf::rt::LazyV2::INIT;
-        instance.get(TestCtx::new)
+    fn default_instance() -> &'static TestCtxValue {
+        static instance: ::protobuf::rt::LazyV2<TestCtxValue> = ::protobuf::rt::LazyV2::INIT;
+        instance.get(TestCtxValue::new)
     }
 }
 
-impl ::protobuf::Clear for TestCtx {
+impl ::protobuf::Clear for TestCtxValue {
     fn clear(&mut self) {
-        self.ctx.clear();
+        self.value.clear();
         self.unknown_fields.clear();
     }
 }
 
-impl ::std::fmt::Debug for TestCtx {
+impl ::std::fmt::Debug for TestCtxValue {
     fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         ::protobuf::text_format::fmt(self, f)
     }
 }
 
-impl ::protobuf::reflect::ProtobufValue for TestCtx {
+impl ::protobuf::reflect::ProtobufValue for TestCtxValue {
     fn as_ref(&self) -> ::protobuf::reflect::ReflectValueRef {
         ::protobuf::reflect::ReflectValueRef::Message(self)
     }
@@ -533,8 +533,8 @@ impl ::protobuf::reflect::ProtobufValue for TestCtx {
 static file_descriptor_proto_data: &'static [u8] = b"\
     \n\ntest.proto\x12\x04test\"&\n\x08TestArgs\x12\x0c\n\x01a\x18\x01\x20\
     \x01(\x05R\x01a\x12\x0c\n\x01b\x18\x02\x20\x01(\x05R\x01b\"\x18\n\x08Tes\
-    tRets\x12\x0c\n\x01c\x18\x01\x20\x01(\x05R\x01c\"\x1b\n\x07TestCtx\x12\
-    \x10\n\x03ctx\x18\x01\x20\x01(\tR\x03ctxb\x06proto3\
+    tRets\x12\x0c\n\x01c\x18\x01\x20\x01(\x05R\x01c\"$\n\x0cTestCtxValue\x12\
+    \x14\n\x05value\x18\x01\x20\x01(\tR\x05valueb\x06proto3\
 ";
 
 static file_descriptor_proto_lazy: ::protobuf::rt::LazyV2<::protobuf::descriptor::FileDescriptorProto> = ::protobuf::rt::LazyV2::INIT;

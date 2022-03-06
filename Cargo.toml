@@ -38,6 +38,11 @@ path = "./examples/wasm/simple.rs"
 crate-type = ['cdylib']
 name = "detailed"
 path = "examples/wasm/detailed.rs"
+[[example]]
+crate-type = ['cdylib']
+name = "custom_context"
+path = "examples/wasm/custom_context.rs"
+
 
 [workspace]
 members = [
