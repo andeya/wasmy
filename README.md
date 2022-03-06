@@ -103,7 +103,7 @@ fn link_mod() {
 $ rustup target add wasm32-wasi
 
 $ cargo +nightly build --target=wasm32-wasi --example=simple
-$ cargo +nightly run --example=vm -- ../../wasm32-wasi/debug/examples/simple.wasm
+$ cargo +nightly run --example=svm -- ../../wasm32-wasi/debug/examples/simple.wasm
 ```
 
 - alias cargo cmd:
@@ -112,5 +112,5 @@ $ cargo +nightly run --example=vm -- ../../wasm32-wasi/debug/examples/simple.was
 $ rustup target add wasm32-wasi
 
 $ cargo +nightly wasm simple
-$ cargo +nightly vm simple
+$ cargo +nightly svm simple
 ```
