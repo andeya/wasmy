@@ -97,13 +97,17 @@ pub(crate) struct WasmHandlerApi();
 
 impl WasmHandlerApi {
     pub const fn onload_symbol() -> &'static str {
-        "_wasm_onload"
+        "_wasmy_wasm_onload"
     }
     pub fn method_to_symbol(method: WasmMethod) -> String {
-        format!("_wasm_handle_{}", method)
+        format!("_wasmy_wasm_handle_{}", method)
     }
     pub fn symbol_to_method(symbol: &str) -> Option<WasmMethod> {
-        symbol.rsplit(|r| r == '_').next().and_then(|s| s.parse().ok())
+        if let Some(s) = symbol.strip_prefix("_wasmy_wasm_handle_") {
+            s.parse().ok()
+        } else {
+            None
+        }
     }
 }
 
@@ -114,12 +118,12 @@ mod tests {
     #[test]
     fn method_to_symbol() {
         let method = WasmHandlerApi::method_to_symbol(10);
-        assert_eq!(method, "_wasm_handle_10");
+        assert_eq!(method, "_wasmy_wasm_handle_10");
     }
 
     #[test]
     fn symbol_to_method() {
-        let method = WasmHandlerApi::symbol_to_method("_wasm_handle_10");
+        let method = WasmHandlerApi::symbol_to_method("_wasmy_wasm_handle_10");
         assert_eq!(method, Some(10));
     }
 }

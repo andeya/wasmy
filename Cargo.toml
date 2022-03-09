@@ -25,6 +25,9 @@ path = "examples/vm/svm.rs"
 [[example]]
 name = "dvm"
 path = "examples/vm/dvm.rs"
+[[example]]
+name = "cvm"
+path = "examples/vm/cvm.rs"
 
 
 [target.'cfg(target_family="wasm")'.dependencies]
@@ -40,8 +43,12 @@ name = "detailed"
 path = "examples/wasm/detailed.rs"
 [[example]]
 crate-type = ['cdylib']
-name = "custom_context"
-path = "examples/wasm/custom_context.rs"
+name = "context"
+path = "examples/wasm/context.rs"
+[[example]]
+crate-type = ['cdylib']
+name = "custom"
+path = "examples/wasm/custom.rs"
 
 
 [workspace]

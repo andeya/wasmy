@@ -44,9 +44,13 @@ impl CodeMsg {
 pub type RetCode = i32;
 
 pub const CODE_UNKNOWN: RetCode = -1;
-pub const CODE_PROTO: RetCode = -2;
-pub const CODE_NONE: RetCode = -3;
-pub const CODE_MEM: RetCode = -4;
+pub const CODE_EXPORTS: RetCode = -2;
+pub const CODE_WASI: RetCode = -3;
+pub const CODE_COMPILE: RetCode = -4;
+pub const CODE_INSTANTIATION: RetCode = -5;
+pub const CODE_PROTO: RetCode = -6;
+pub const CODE_NONE: RetCode = -7;
+pub const CODE_MEM: RetCode = -8;
 
 impl std::fmt::Display for CodeMsg {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -183,5 +187,33 @@ impl FromResidual<Result<Infallible>> for OutRets {
             Err(e) => e.into(),
             _ => { unreachable!() }
         }
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
+impl From<wasmer::InstantiationError> for CodeMsg {
+    fn from(v: wasmer::InstantiationError) -> Self {
+        CodeMsg::new(CODE_COMPILE, v)
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
+impl From<wasmer::CompileError> for CodeMsg {
+    fn from(v: wasmer::CompileError) -> Self {
+        CodeMsg::new(CODE_COMPILE, v)
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
+impl From<wasmer_wasi::WasiStateCreationError> for CodeMsg {
+    fn from(v: wasmer_wasi::WasiStateCreationError) -> Self {
+        CodeMsg::new(CODE_WASI, v)
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
+impl From<wasmer_wasi::WasiError> for CodeMsg {
+    fn from(v: wasmer_wasi::WasiError) -> Self {
+        CodeMsg::new(CODE_WASI, v)
     }
 }

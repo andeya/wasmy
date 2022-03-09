@@ -18,5 +18,9 @@ wasmy-macros = "0.5.1"
 protobuf = { version = "2", features = ["with-bytes"] }
 anyhow = "1"
 
+[target.'cfg(not(target_family="wasm"))'.dependencies]
+wasmer = "2.0.0"
+wasmer-wasi = "2.0.0"
+
 [build-dependencies]
 protoc-rust = "2.0"

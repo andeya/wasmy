@@ -42,7 +42,7 @@ fn multiply(ctx: WasmCtx, args: TestArgs) -> Result<TestRets> {
 // #[inline]
 // #[no_mangle]
 // pub extern "C" fn
-// _wasm_handle_0(ctx_size: i32, args_size: i32)
+// _wasmy_wasm_handle_0(ctx_size: i32, args_size: i32)
 // {
 //     #[allow(unused_mut)]
 //     #[inline]

@@ -30,7 +30,7 @@ pub fn vm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
     let raw_sig = syn::parse_macro_input!(item as ItemFn).sig;
     let has_ctx = raw_sig.inputs.len() == 2;
     let raw_ident = raw_sig.ident;
-    let new_ident = Ident::new(&format!("_vm_handle_{}", method), Span::call_site());
+    let new_ident = Ident::new(&format!("_wasmy_vm_handle_{}", method), Span::call_site());
 
     let new_item = if has_ctx {
         quote! {
@@ -80,7 +80,7 @@ pub fn wasm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
     let mut new_item = item.clone();
     let raw_sig = syn::parse_macro_input!(item as ItemFn).sig;
     let (inner_ident, inner_item) = wasm_gen_inner(raw_sig);
-    let outer_ident = Ident::new(&format!("_wasm_handle_{}", method), Span::call_site());
+    let outer_ident = Ident::new(&format!("_wasmy_wasm_handle_{}", method), Span::call_site());
     let outer_item = quote! {
         #[allow(redundant_semicolons)]
         #[inline]
@@ -126,7 +126,7 @@ fn wasm_gen_inner(raw_sig: Signature) -> (Ident, proc_macro2::TokenStream) {
 pub fn wasm_onload(_args: TokenStream, item: TokenStream) -> TokenStream {
     let raw_item = proc_macro2::TokenStream::from(item.clone());
     let raw_ident = syn::parse_macro_input!(item as syn::ItemFn).sig.ident;
-    let new_ident = Ident::new("_wasm_onload", Span::call_site());
+    let new_ident = Ident::new("_wasmy_wasm_onload", Span::call_site());
     let new_item = quote! {
         #[allow(redundant_semicolons)]
         #[inline]

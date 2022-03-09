@@ -1,7 +1,12 @@
-#![feature(unboxed_closures, fn_traits, thread_id_value, const_fn_fn_ptr_basics)]
+#![feature(unboxed_closures, fn_traits, thread_id_value)]
+
+pub use wasmer::{Function, import_namespace, ImportObject, Module};
+pub use wasmer_wasi::{WasiState, WasiStateBuilder};
 
 pub use entry::*;
 pub use handler::*;
+pub use instance::*;
+pub use modules::*;
 pub use wasm_file::*;
 pub use wasmy_abi::*;
 

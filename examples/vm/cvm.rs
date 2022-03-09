@@ -13,7 +13,24 @@ fn main() {
     run(
         Mode::THREAD,
         |wasm_uri| -> WasmCaller {
-            load_wasm(wasm_uri).unwrap()
+            custom_load_wasm(wasm_uri, Some(|module: &Module| -> Result<()>{
+                for x in module.exports().functions() {
+                    println!("export function: {:?}", x);
+                }
+                Ok(())
+            }), Some(|builder: &mut WasiStateBuilder, module: &Module, key: &LocalInstanceKey| -> Result<ImportObject>{
+                let mut import_object = builder
+                    .arg("-v true")
+                    .env("AUTHOR", "henrylee2cn")
+                    .finalize()?
+                    .import_object(module)?;
+                import_object.register("env", import_namespace! ({
+                    "custom_a" => Function::new_native_with_env(module.store(), key.clone(), |key: &LocalInstanceKey, a: i32| {
+                        #[cfg(debug_assertions)] println!("[VM:{:?}]custom_a: wasm_uri={}, a={}", key.thread_id(), key.wasm_uri(), a);
+                    }),
+                }));
+                Ok(import_object)
+            })).unwrap()
         },
         |index: usize, wasm_caller: WasmCaller| {
             let mut data = TestArgs::new();
