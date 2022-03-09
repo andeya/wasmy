@@ -1,6 +1,6 @@
 [package]
 name = "wasmy-abi"
-version = "0.5.1"
+version = "0.5.5"
 edition = "2021"
 resolver = "2"
 authors = ["henrylee2cn <henrylee2cn@gmail.com>"]
@@ -14,7 +14,7 @@ readme = "../README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wasmy-macros = "0.5.1"
+wasmy-macros = "0.5.5"
 protobuf = { version = "2", features = ["with-bytes"] }
 anyhow = "1"
 
