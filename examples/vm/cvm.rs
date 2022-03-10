@@ -38,6 +38,15 @@ fn main() {
             data.set_b(5);
             let rets: TestRets = wasm_caller.call(0, data.clone()).unwrap();
             println!("NO.{}: {}+{}={}", index, data.get_a(), data.get_b(), rets.get_c());
+            let rets = wasm_caller.with_exports(|exports| {
+                Ok(exports.get_native_function::<i32, i32>("opposite_sign")
+                          .map_err(|e| CodeMsg::new(CODE_NONE, e))?
+                    .call(index as i32)?)
+            });
+            match rets {
+                Ok(r) => println!("NO.{}: -{}={}", index, index, r),
+                Err(e) => eprintln!("{}", e),
+            }
         });
 }
 

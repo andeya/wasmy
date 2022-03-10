@@ -1,3 +1,5 @@
+use wasmer::Exports;
+
 use wasmy_abi::*;
 
 use crate::{instance, WasmUri};
@@ -31,22 +33,33 @@ impl WasmUri {
 }
 
 impl WasmCaller {
+    /// create wasm caller from URI.
     pub fn from(wasm_uri: WasmUri) -> WasmCaller {
         WasmCaller(wasm_uri)
     }
+    /// Get the wasm URI.
     pub fn wasm_uri(&self) -> &WasmUri {
         &self.0
     }
+    /// Call the wasm specified method.
     pub fn call<A: Message, R: Message>(&self, method: Method, data: A) -> Result<R> {
         let in_args = InArgs::try_new(method, data)?;
         instance::with(self.0.clone(), |ins| -> Result<R>{
             ins.call_wasmy_wasm_handler(None::<Empty>, method, in_args)?.into()
         })
     }
+    /// Carry the context to call the wasm specified method.
     pub fn ctx_call<C: Message, A: Message, R: Message>(&self, ctx: C, method: Method, data: A) -> Result<R> {
         let in_args = InArgs::try_new(method, data)?;
         instance::with(self.0.clone(), |ins| -> Result<R>{
             ins.call_wasmy_wasm_handler(Some(ctx), method, in_args)?.into()
+        })
+    }
+    /// Get export information and do custom operations, such as original calls.
+    pub fn with_exports<F, R>(&self, callback: F) -> Result<R>
+        where F: FnOnce(&Exports) -> Result<R> {
+        instance::with(self.0.clone(), |ins| -> Result<R>{
+            callback(ins.exports())
         })
     }
 }

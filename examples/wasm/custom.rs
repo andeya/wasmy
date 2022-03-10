@@ -1,10 +1,14 @@
-use rand::random;
 use std::env;
+
+use rand::random;
+
 use wasmy_abi::*;
 use wasmy_abi::test::*;
 
 #[no_mangle]
-fn custom_0() {}
+fn opposite_sign(a: i32) -> i32 {
+    -a
+}
 
 #[wasm_handle(0)]
 fn multiply(ctx: WasmCtx, args: TestArgs) -> Result<TestRets> {

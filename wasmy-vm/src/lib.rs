@@ -1,6 +1,6 @@
 #![feature(unboxed_closures, fn_traits, thread_id_value)]
 
-pub use wasmer::{Function, import_namespace, ImportObject, Module};
+pub use wasmer::{Exports, Function, import_namespace, ImportObject, Module};
 pub use wasmer_wasi::{WasiState, WasiStateBuilder};
 
 pub use entry::*;

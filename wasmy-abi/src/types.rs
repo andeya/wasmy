@@ -48,9 +48,10 @@ pub const CODE_EXPORTS: RetCode = -2;
 pub const CODE_WASI: RetCode = -3;
 pub const CODE_COMPILE: RetCode = -4;
 pub const CODE_INSTANTIATION: RetCode = -5;
-pub const CODE_PROTO: RetCode = -6;
-pub const CODE_NONE: RetCode = -7;
-pub const CODE_MEM: RetCode = -8;
+pub const CODE_RUNTIME: RetCode = -6;
+pub const CODE_PROTO: RetCode = -7;
+pub const CODE_NONE: RetCode = -8;
+pub const CODE_MEM: RetCode = -9;
 
 impl std::fmt::Display for CodeMsg {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -215,5 +216,12 @@ impl From<wasmer_wasi::WasiStateCreationError> for CodeMsg {
 impl From<wasmer_wasi::WasiError> for CodeMsg {
     fn from(v: wasmer_wasi::WasiError) -> Self {
         CodeMsg::new(CODE_WASI, v)
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
+impl From<wasmer::RuntimeError> for CodeMsg {
+    fn from(v: wasmer::RuntimeError) -> Self {
+        CodeMsg::new(CODE_RUNTIME, v)
     }
 }
