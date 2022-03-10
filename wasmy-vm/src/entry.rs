@@ -1,8 +1,8 @@
-use wasmer::Exports;
+use wasmer::Val;
 
 use wasmy_abi::*;
 
-use crate::{instance, WasmUri};
+use crate::{instance, Instance, WasmUri};
 use crate::modules::{FnBuildImportObject, FnCheckModule};
 use crate::wasm_file::WasmFile;
 
@@ -45,21 +45,27 @@ impl WasmCaller {
     pub fn call<A: Message, R: Message>(&self, method: Method, data: A) -> Result<R> {
         let in_args = InArgs::try_new(method, data)?;
         instance::with(self.0.clone(), |ins| -> Result<R>{
-            ins.call_wasmy_wasm_handler(None::<Empty>, method, in_args)?.into()
+            ins.handle_wasm(method, in_args)?.into()
         })
     }
     /// Carry the context to call the wasm specified method.
     pub fn ctx_call<C: Message, A: Message, R: Message>(&self, ctx: C, method: Method, data: A) -> Result<R> {
         let in_args = InArgs::try_new(method, data)?;
         instance::with(self.0.clone(), |ins| -> Result<R>{
-            ins.call_wasmy_wasm_handler(Some(ctx), method, in_args)?.into()
+            ins.ctx_handle_wasm(ctx, method, in_args)?.into()
         })
     }
-    /// Get export information and do custom operations, such as original calls.
-    pub fn with_exports<F, R>(&self, callback: F) -> Result<R>
-        where F: FnOnce(&Exports) -> Result<R> {
+    // // Execute the raw call to wasm.
+    pub fn raw_call(&self, sign_name: &str, args: &[Val]) -> Result<Box<[Val]>> {
+        instance::with(self.0.clone(), |ins| -> Result<Box<[Val]>>{
+            ins.raw_call_wasm(sign_name, args)
+        })
+    }
+    /// Get instance and do custom operations.
+    pub fn with<F, R>(&self, callback: F) -> Result<R>
+        where F: FnOnce(&Instance) -> Result<R> {
         instance::with(self.0.clone(), |ins| -> Result<R>{
-            callback(ins.exports())
+            callback(ins)
         })
     }
 }

@@ -7,7 +7,7 @@ use std::thread;
 use std::thread::ThreadId;
 
 use lazy_static;
-use wasmer::{Exports, Function, ImportObject, Memory, MemoryView, WasmerEnv};
+use wasmer::{Exports, Function, ImportObject, Memory, MemoryView, Val, WasmerEnv};
 
 use crate::{modules, WasmUri};
 use crate::handler::*;
@@ -89,7 +89,7 @@ pub(crate) fn with<F, R>(wasm_uri: WasmUri, callback: F) -> Result<R>
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Instance {
+pub struct Instance {
     key: LocalInstanceKey,
     instance: wasmer::Instance,
     loaded: Cell<bool>,
@@ -108,14 +108,14 @@ impl Context {
         Self { ctx_ptr: 0, ctx_bytes: Vec::with_capacity(capacity), swap_memory: Vec::with_capacity(capacity) }
     }
 
-    fn set_args<C: Message>(&mut self, ctx: Option<&C>, in_args: InArgs) -> (usize, usize) {
+    fn set_args<C: Message>(&mut self, ctx_value: Option<&C>, in_args: InArgs) -> (usize, usize) {
         let args_size = write_to_vec(&in_args, &mut self.swap_memory);
         if args_size == 0 {
             unsafe { self.swap_memory.set_len(0) }
         }
-        let ctx_size = if let Some(ctx) = ctx {
-            self.ctx_ptr = ctx as *const C as usize;
-            write_to_vec(ctx, &mut self.ctx_bytes)
+        let ctx_size = if let Some(val) = ctx_value {
+            self.ctx_ptr = val as *const C as usize;
+            write_to_vec(val, &mut self.ctx_bytes)
         } else {
             unsafe { self.ctx_bytes.set_len(0) };
             0
@@ -220,14 +220,14 @@ impl Instance {
     }
 
     fn init(&self) -> Result<()> {
-        let ret = self.raw_call_wasm(WasmHandlerApi::onload_symbol(), None).map_or_else(|e| {
+        let ret = self.raw_call_wasm(WasmHandlerApi::onload_symbol(), &[]).map_or_else(|e| {
             if e.code == CODE_NONE {
                 #[cfg(debug_assertions)]println!("[{:?}]no need initialize instance: wasm_uri={}", self.key.thread_id, self.key.wasm_uri);
                 Ok(())
             } else {
                 e.into_result()
             }
-        }, |_:()| {
+        }, |_| {
             #[cfg(debug_assertions)]println!("[{:?}]initialized instance: wasm_uri={}", self.key.thread_id, self.key.wasm_uri);
             Ok(())
         });
@@ -242,46 +242,47 @@ impl Instance {
         }
     }
     #[inline]
-    pub(crate) fn call_wasmy_wasm_handler<C: Message>(&self, ctx: Option<C>, method: Method, in_args: InArgs) -> Result<OutRets> {
+    pub fn handle_wasm(&self, method: Method, in_args: InArgs) -> Result<OutRets> {
+        self.inner_handle_wasm(None::<Empty>, method, in_args)
+    }
+    #[inline]
+    pub fn ctx_handle_wasm<C: Message>(&self, ctx_value: C, method: Method, in_args: InArgs) -> Result<OutRets> {
+        self.inner_handle_wasm(Some(ctx_value), method, in_args)
+    }
+    #[inline]
+    fn inner_handle_wasm<C: Message>(&self, ctx_value: Option<C>, method: Method, in_args: InArgs) -> Result<OutRets> {
         self.check_loaded()?;
         #[cfg(debug_assertions)] println!("method={}, data={:?}", in_args.get_method(), in_args.get_data());
-        let (ctx_size, args_size) = self.context.borrow_mut().set_args(ctx.as_ref(), in_args);
+        let (ctx_size, args_size) = self.context.borrow_mut().set_args(ctx_value.as_ref(), in_args);
         let sign_name = WasmHandlerApi::method_to_symbol(method);
-        self.raw_call_wasm(sign_name.as_str(), Some((ctx_size as i32, args_size as i32)))?;
+        self.raw_call_wasm(sign_name.as_str(), &[Val::I32(ctx_size as i32), Val::I32(args_size as i32)])?;
         Ok(self.context.borrow_mut().out_rets())
     }
-    pub(crate) fn exports(&self) -> &Exports {
+    pub fn exports(&self) -> &Exports {
         &self.instance.exports
     }
-    pub(crate) fn raw_call_wasm(&self, sign_name: &str, args: Option<(i32, i32)>) -> Result<()> {
-        let exports = self.exports();
+    pub fn raw_call_wasm(&self, sign_name: &str, args: &[Val]) -> Result<Box<[Val]>> {
+        let f = self.exports()
+                    .get_function(sign_name)
+                    .map_err(|e| CodeMsg::new(CODE_NONE, e))?;
         loop {
-            let ret = if let Some((ctx_size, args_size)) = args.clone() {
-                exports
-                    .get_native_function::<(i32, i32), ()>(sign_name)
-                    .map_err(|e| CodeMsg::new(CODE_NONE, e))?
-                    .call(ctx_size, args_size)
-            } else {
-                exports
-                    .get_native_function::<(), ()>(sign_name)
-                    .map_err(|e| CodeMsg::new(CODE_NONE, e))?
-                    .call()
-            };
-            if let Err(e) = ret {
-                let estr = format!("{:?}", e);
-                eprintln!("call {} error: {}", sign_name, estr);
-                if estr.contains("OOM") {
-                    match self.get_memory().grow(1) {
-                        Ok(p) => {
-                            println!("memory grow, previous memory size: {:?}", p);
-                        }
-                        Err(e) => {
-                            return CodeMsg::result(CODE_MEM, format!("failed to memory grow: {:?}", e))
+            let rets = f.call(&args);
+            match rets {
+                Ok(r) => return Ok(r),
+                Err(e) => {
+                    let estr = format!("{:?}", e);
+                    eprintln!("call {} error: {}", sign_name, estr);
+                    if estr.contains("OOM") {
+                        match self.get_memory().grow(1) {
+                            Ok(p) => {
+                                println!("memory grow, previous memory size: {:?}", p);
+                            }
+                            Err(e) => {
+                                return CodeMsg::result(CODE_MEM, format!("failed to memory grow: {:?}", e))
+                            }
                         }
                     }
                 }
-            } else {
-                return Ok(());
             }
         }
     }
