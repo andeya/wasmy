@@ -38,9 +38,9 @@ fn main() {
             data.set_b(5);
             let rets: TestRets = wasm_caller.call(0, data.clone()).unwrap();
             println!("NO.{}: {}+{}={}", index, data.get_a(), data.get_b(), rets.get_c());
-            let rets = wasm_caller.raw_call("opposite_sign", &[Val::I32(index as i32)]);
+            let rets = wasm_caller.raw_call("opposite_sign", &[(index as i32).into()]);
             match rets {
-                Ok(r) => println!("NO.{}: -{}={}", index, index, r[0].i32().unwrap()),
+                Ok(r) => println!("NO.{}: -{}={}", index, index, r[0].unwrap_i32()),
                 Err(e) => eprintln!("{}", e),
             }
         });
