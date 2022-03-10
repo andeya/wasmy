@@ -15,7 +15,7 @@ readme = "./README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 
-[target.'cfg(not(target_family="wasm"))'.dependencies]
+[target.'cfg(not(target_family="wasm"))'.dev-dependencies]
 wasmy-vm = "0.5.5"
 structopt = { version = "0.3", features = ["color"] }
 tokio = { version = "1.17.0", features = ["macros", "rt", "rt-multi-thread"] }
@@ -30,7 +30,7 @@ name = "cvm"
 path = "examples/vm/cvm.rs"
 
 
-[target.'cfg(target_family="wasm")'.dependencies]
+[target.'cfg(target_family="wasm")'.dev-dependencies]
 wasmy-abi = "0.5.5"
 rand = "0.8.4"
 [[example]]
