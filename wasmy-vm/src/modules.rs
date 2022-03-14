@@ -7,7 +7,7 @@ use wasmer_engine_universal::Universal;
 use wasmer_wasi::{WasiState, WasiStateBuilder};
 use wasmy_abi::{CodeMsg, Result, CODE_EXPORTS};
 
-use crate::{handler::WasmHandlerApi, instance::LocalInstanceKey, VmHandlerApi, WasmFile, WasmUri};
+use crate::{handler::WasmHandlerApi, instance::InstanceEnv, VmHandlerApi, WasmFile, WasmUri};
 
 pub(crate) struct Module {
     pub(crate) module: wasmer::Module,
@@ -15,13 +15,13 @@ pub(crate) struct Module {
 }
 
 impl Module {
-    pub(crate) fn build_import_object(&self, key: &LocalInstanceKey) -> Result<ImportObject> {
-        (self.fn_build_import_object)(&self.module, key)
+    pub(crate) fn build_import_object(&self, env: &InstanceEnv) -> Result<ImportObject> {
+        (self.fn_build_import_object)(&self.module, env)
     }
 }
 
 pub type FnCheckModule = fn(&wasmer::Module) -> Result<()>;
-pub type FnBuildImportObject = fn(&wasmer::Module, &LocalInstanceKey) -> Result<ImportObject>;
+pub type FnBuildImportObject = fn(&wasmer::Module, &InstanceEnv) -> Result<ImportObject>;
 
 lazy_static::lazy_static! {
    pub(crate) static ref MODULES: RwLock<HashMap<WasmUri, Module>> = RwLock::new(HashMap::new());
@@ -101,8 +101,8 @@ where
     Ok(wasm_uri.clone())
 }
 
-fn default_import_object(module: &wasmer::Module, key: &LocalInstanceKey) -> Result<ImportObject> {
-    let mut builder: WasiStateBuilder = WasiState::new(key.wasm_uri());
+fn default_import_object(module: &wasmer::Module, env: &InstanceEnv) -> Result<ImportObject> {
+    let mut builder: WasiStateBuilder = WasiState::new(env.wasm_uri());
     return Ok(builder
         // First, we create the `WasiEnv` with the stdio pipes
         .finalize()?

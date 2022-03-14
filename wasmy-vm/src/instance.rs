@@ -24,7 +24,7 @@ lazy_static::lazy_static! {
 }
 
 #[derive(Hash, Eq, PartialEq, Clone, Debug, WasmerEnv)]
-pub struct LocalInstanceKey {
+struct LocalInstanceKey {
     wasm_uri: WasmUri,
     thread_id: ThreadId,
 }
@@ -33,16 +33,10 @@ impl LocalInstanceKey {
     fn from(wasm_uri: WasmUri) -> LocalInstanceKey {
         LocalInstanceKey { wasm_uri, thread_id: thread::current().id() }
     }
-    pub fn wasm_uri(&self) -> &WasmUri {
-        &self.wasm_uri
-    }
-    pub fn thread_id(&self) -> ThreadId {
-        self.thread_id
-    }
 }
 
 #[derive(Clone, WasmerEnv, Debug)]
-struct InstanceEnv {
+pub struct InstanceEnv {
     key: LocalInstanceKey,
     ptr: *mut Instance,
 }
@@ -67,7 +61,13 @@ impl InstanceEnv {
                 .insert(self.key.clone(), Mutex::new(Box::from_raw(self.ptr)));
         }
     }
-    fn as_instance(&self) -> &Instance {
+    pub fn wasm_uri(&self) -> &WasmUri {
+        &self.key.wasm_uri
+    }
+    pub fn thread_id(&self) -> ThreadId {
+        self.key.thread_id
+    }
+    pub fn as_instance(&self) -> &Instance {
         unsafe { &*self.ptr }
     }
 }
@@ -126,8 +126,9 @@ impl Context {
         self.value_ptr = ptr as *const T as usize;
     }
 
-    pub fn value_ptr<T>(&self) -> *const T {
-        self.value_ptr as *const T
+    pub unsafe fn value_ptr<T>(&self) -> Option<&T> {
+        let ptr = self.value_ptr as *const T;
+        if ptr.is_null() { None } else { Some(&*ptr) }
     }
 
     fn set_args<C: Message>(&mut self, ctx_value: Option<&C>, in_args: InArgs) -> (usize, usize) {
@@ -223,7 +224,7 @@ impl Instance {
     }
 
     fn build_import_object(module: &Module, ins_env: &InstanceEnv) -> Result<ImportObject> {
-        let mut import_object = module.build_import_object(&ins_env.key)?;
+        let mut import_object = module.build_import_object(ins_env)?;
         let mut env_namespace =
             import_object.get_namespace_exports("env").unwrap_or_else(|| Exports::new());
         env_namespace.insert(
