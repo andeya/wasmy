@@ -261,7 +261,7 @@ impl Instance {
                     );
                     let ins = ins_env.as_instance();
                     let _ = ins.use_ctx_swap_memory(size as usize, |buffer| {
-                        ins.read_view_bytes(offset as usize, size as usize, buffer);
+                        ins.read_memory_bytes(offset as usize, size as usize, buffer);
                         buffer.len()
                     });
                 },
@@ -282,7 +282,7 @@ impl Instance {
                     let ins = ins_env.as_instance();
                     let ctx_ptr = ins.context.borrow().value_ptr;
                     ins.use_ctx_swap_memory(size as usize, |buffer| {
-                        ins.read_view_bytes(offset as usize, size as usize, buffer);
+                        ins.read_memory_bytes(offset as usize, size as usize, buffer);
                         write_to_vec(&vm_invoke(ctx_ptr, buffer), buffer)
                     }) as i32
                 },
@@ -397,7 +397,7 @@ impl Instance {
         let mut ctx = self.context.borrow_mut();
         let cache: &mut Vec<u8> =
             if is_ctx { ctx.value_bytes.as_mut() } else { ctx.swap_memory.as_mut() };
-        self.set_view_bytes(offset as usize, cache.iter());
+        self.write_memory_bytes(offset as usize, cache.iter());
         if !is_ctx {
             unsafe {
                 cache.set_len(0);
@@ -422,7 +422,7 @@ impl Instance {
     fn get_view(&self) -> MemoryView<u8> {
         self.get_memory().view::<u8>()
     }
-    fn set_view_bytes<'a>(
+    pub fn write_memory_bytes<'a>(
         &self,
         offset: usize,
         data: impl IntoIterator<Item = &'a u8> + ExactSizeIterator,
@@ -432,7 +432,7 @@ impl Instance {
             cell.set(*b);
         }
     }
-    fn read_view_bytes(&self, offset: usize, size: usize, buffer: &mut Vec<u8>) {
+    pub fn read_memory_bytes(&self, offset: usize, size: usize, buffer: &mut Vec<u8>) {
         if size == 0 {
             resize_with_capacity(buffer, size);
             return;
