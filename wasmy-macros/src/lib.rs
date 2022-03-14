@@ -190,7 +190,7 @@ fn parse_method(marco_name: &str, input: TokenStream) -> Result<i32, syn::Error>
             }
         }
     }
-    return Err(err);
+    Err(err)
 }
 
 fn fn_arg_ident(arg: &FnArg) -> Ident {
