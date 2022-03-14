@@ -1,8 +1,6 @@
-use std::{env, thread};
-use std::path::PathBuf;
+use std::{env, path::PathBuf, thread};
 
 use structopt::StructOpt;
-
 use wasmy_vm::*;
 
 #[derive(StructOpt, Debug)]
@@ -26,8 +24,9 @@ pub enum Mode {
 }
 
 pub fn run<L, C>(model: Mode, loader: L, callback: C)
-    where L: Fn(PathBuf) -> WasmCaller,
-          C: Fn(usize, WasmCaller) + Sync + Copy + Send + 'static,
+where
+    L: Fn(PathBuf) -> WasmCaller,
+    C: Fn(usize, WasmCaller) + Sync + Copy + Send + 'static,
 {
     println!("wasmy, easily customize my wasm app!");
     let mut opt: Opt = Opt::from_args();
@@ -35,18 +34,14 @@ pub fn run<L, C>(model: Mode, loader: L, callback: C)
         opt.wasm_path = p.join(&opt.wasm_path);
     };
     opt.wasm_path.set_extension("wasm");
-    let wasm_path = PathBuf::from(env::args().next().unwrap()).parent().unwrap().join(opt.wasm_path);
+    let wasm_path =
+        PathBuf::from(env::args().next().unwrap()).parent().unwrap().join(opt.wasm_path);
     println!("wasm file path: {:?}", wasm_path);
 
     let caller = loader(wasm_path);
 
-    let thread_num = opt
-        .thread_num
-        .and_then(|c| Some(if c == 0 { 1 } else { c }))
-        .unwrap_or(1);
-    let number = opt.number
-                    .and_then(|c| Some(if c == 0 { 1 } else { c }))
-                    .unwrap_or(1);
+    let thread_num = opt.thread_num.and_then(|c| Some(if c == 0 { 1 } else { c })).unwrap_or(1);
+    let number = opt.number.and_then(|c| Some(if c == 0 { 1 } else { c })).unwrap_or(1);
 
     match model {
         Mode::TOKIO => {
@@ -65,17 +60,12 @@ pub fn run<L, C>(model: Mode, loader: L, callback: C)
                         });
                     }
                 });
-        },
+        }
         Mode::THREAD => {
             let mut hdls = vec![];
-            let number = opt.number
-                            .and_then(|c| Some(if c == 0 { 1 } else { c }))
-                            .unwrap_or(1);
+            let number = opt.number.and_then(|c| Some(if c == 0 { 1 } else { c })).unwrap_or(1);
 
-            for i in 1..=opt
-                .thread_num
-                .and_then(|c| Some(if c == 0 { 1 } else { c }))
-                .unwrap_or(1)
+            for i in 1..=opt.thread_num.and_then(|c| Some(if c == 0 { 1 } else { c })).unwrap_or(1)
             {
                 let caller2 = caller.clone();
                 hdls.push(thread::spawn(move || {
@@ -87,6 +77,6 @@ pub fn run<L, C>(model: Mode, loader: L, callback: C)
             for h in hdls {
                 let _ = h.join();
             }
-        },
+        }
     };
 }

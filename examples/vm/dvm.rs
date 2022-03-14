@@ -1,9 +1,10 @@
 //! detailed vm example
-//!
 use wasmy_vm::*;
 
-use crate::test::{TestArgs, TestCtxValue, TestRets};
-use crate::vm::{Mode, run};
+use crate::{
+    test::{TestArgs, TestCtxValue, TestRets},
+    vm::{run, Mode},
+};
 
 mod vm;
 
@@ -11,9 +12,7 @@ fn main() {
     link_mod();
     run(
         Mode::TOKIO,
-        |wasm_uri| -> WasmCaller {
-            load_wasm(wasm_uri).unwrap()
-        },
+        |wasm_uri| -> WasmCaller { load_wasm(wasm_uri).unwrap() },
         |index: usize, wasm_caller: WasmCaller| {
             let mut ctx = TestCtxValue::new();
             ctx.set_value(env!("CARGO_PKG_VERSION").to_string());
@@ -23,7 +22,8 @@ fn main() {
             let rets: TestRets = wasm_caller.ctx_call(ctx, 0, data.clone()).unwrap();
             // let rets: TestRets = wasm_caller.call(0, data.clone()).unwrap();
             println!("NO.{}: {}+{}={}", index, data.get_a(), data.get_b(), rets.get_c());
-        })
+        },
+    )
 }
 
 // Make sure the mod is linked
@@ -37,7 +37,6 @@ fn link_mod() {
     }
     // more #[vm_handle(i32)] fn ...
 }
-
 
 // Expanded codes:
 //
@@ -59,4 +58,5 @@ fn link_mod() {
 //     add(unsafe { ::wasmy_vm::VmHandlerApi::try_as(ctx_ptr) }, ::wasmy_vm
 //     ::VmHandlerApi::unpack_any(args)
 //         ?).and_then(|res| ::wasmy_vm::VmHandlerApi::pack_any(res))
-// } ::wasmy_vm::submit_handler! { :: wasmy_vm :: VmHandlerApi :: new(0i32, _wasmy_vm_handle_0) }
+// } ::wasmy_vm::submit_handler! { :: wasmy_vm :: VmHandlerApi :: new(0i32,
+// _wasmy_vm_handle_0) }

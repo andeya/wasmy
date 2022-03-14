@@ -1,6 +1,8 @@
-use std::fmt::{Display, Formatter};
-use std::ops::Deref;
-use std::path::PathBuf;
+use std::{
+    fmt::{Display, Formatter},
+    ops::Deref,
+    path::PathBuf,
+};
 
 use wasmer::WasmerEnv;
 
@@ -38,11 +40,14 @@ pub trait WasmFile<B: AsRef<[u8]>> {
 
 impl WasmFile<Vec<u8>> for PathBuf {
     fn into_parts(self) -> anyhow::Result<(WasmUri, Vec<u8>)> {
-        Ok((WasmUri(if let Ok(p) = self.canonicalize() {
-            p.to_string_lossy().to_string()
-        } else {
-            self.to_string_lossy().to_string()
-        }), std::fs::read(&self)?))
+        Ok((
+            WasmUri(if let Ok(p) = self.canonicalize() {
+                p.to_string_lossy().to_string()
+            } else {
+                self.to_string_lossy().to_string()
+            }),
+            std::fs::read(&self)?,
+        ))
     }
 }
 
@@ -51,4 +56,3 @@ impl<B: AsRef<[u8]>> WasmFile<B> for (&str, B) {
         Ok((WasmUri(self.0.to_string()), self.1))
     }
 }
-

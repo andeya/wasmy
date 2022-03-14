@@ -1,10 +1,11 @@
 //! simple vm example
-//!
 
 use wasmy_vm::*;
 
-use crate::test::{TestArgs, TestRets};
-use crate::vm::{Mode, run};
+use crate::{
+    test::{TestArgs, TestRets},
+    vm::{run, Mode},
+};
 
 mod vm;
 
@@ -44,7 +45,8 @@ fn main() {
                 Ok(r) => println!("NO.{}: -{}={}", index, index, r[0].unwrap_i32()),
                 Err(e) => eprintln!("{}", e),
             }
-        });
+        },
+    );
 }
 
 // Make sure the mod is linked
@@ -74,4 +76,5 @@ fn link_mod() {
 // {
 //     add(::wasmy_vm::VmHandlerApi::unpack_any(args)
 //         ?).and_then(|res| ::wasmy_vm::VmHandlerApi::pack_any(res))
-// } ::wasmy_vm::submit_handler! { :: wasmy_vm :: VmHandlerApi :: new(0i32, _wasmy_vm_handle_0) }
+// } ::wasmy_vm::submit_handler! { :: wasmy_vm :: VmHandlerApi :: new(0i32,
+// _wasmy_vm_handle_0) }

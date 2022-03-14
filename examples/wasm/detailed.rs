@@ -3,9 +3,7 @@
 use std::thread;
 
 use rand::random;
-
-use wasmy_abi::*;
-use wasmy_abi::test::*;
+use wasmy_abi::{test::*, *};
 
 static mut STATE: u64 = 0;
 
@@ -20,17 +18,27 @@ fn init() {
 
 #[wasm_handle(method = 0)]
 fn multiply(ctx: WasmCtx<TestCtxValue>, args: TestArgs) -> Result<TestRets> {
-    unsafe { STATE += 1; }
+    unsafe {
+        STATE += 1;
+    }
     let rid = random::<u8>() as i32;
     match ctx.try_value() {
         Ok(value) => unsafe {
-            println!("[Wasm-Simple({})] STATE={}, method({}) ctx={:?}, ctx_value={:?}, args={{{:?}}}", rid, STATE, 0, ctx, value, args);
+            println!(
+                "[Wasm-Simple({})] STATE={}, method({}) ctx={:?}, ctx_value={:?}, args={{{:?}}}",
+                rid, STATE, 0, ctx, value, args
+            );
         },
         Err(err) => match err.code {
             CODE_NONE => unsafe {
-                println!("[Wasm-Simple({})] STATE={}, method({}) ctx={:?}, args={{{:?}}}", rid, STATE, 0, ctx, args);
+                println!(
+                    "[Wasm-Simple({})] STATE={}, method({}) ctx={:?}, args={{{:?}}}",
+                    rid, STATE, 0, ctx, args
+                );
+            },
+            _ => {
+                return err.into_result();
             }
-            _ => { return err.into_result(); }
         },
     }
 
@@ -38,13 +46,18 @@ fn multiply(ctx: WasmCtx<TestCtxValue>, args: TestArgs) -> Result<TestRets> {
     vm_args.a = rid;
     vm_args.b = rid;
     let vm_rets: TestRets = ctx.call_vm(0, vm_args)?;
-    println!("[Wasm-Simple({})] call vm method({}): args={{{:?}}}, rets={}", rid, 0, vm_rets, vm_rets.get_c());
+    println!(
+        "[Wasm-Simple({})] call vm method({}): args={{{:?}}}, rets={}",
+        rid,
+        0,
+        vm_rets,
+        vm_rets.get_c()
+    );
 
     let mut rets = TestRets::new();
     rets.set_c(args.a * args.b);
     Ok(rets)
 }
-
 
 // Expanded codes:
 //
@@ -60,8 +73,8 @@ fn multiply(ctx: WasmCtx<TestCtxValue>, args: TestArgs) -> Result<TestRets> {
 //         unsafe
 //             {
 //                 STATE = thread::current().id().as_u64().get();
-//                 println!("[Wasm-Simple] initialized STATE to thread id: {}", STATE);
-//             }
+//                 println!("[Wasm-Simple] initialized STATE to thread id: {}",
+// STATE);             }
 //     }
 //     ;
 //     init();
@@ -77,16 +90,16 @@ fn multiply(ctx: WasmCtx<TestCtxValue>, args: TestArgs) -> Result<TestRets> {
 //     {
 //         Ok(value) => unsafe
 //             {
-//                 println!("[Wasm-Simple({})] STATE={}, method({}) ctx={:?}, ctx_value={:?}, args={{{:?}}}",
-//                          rid, STATE, 0, ctx, value, args);
-//             },
+//                 println!("[Wasm-Simple({})] STATE={}, method({}) ctx={:?},
+// ctx_value={:?}, args={{{:?}}}",                          rid, STATE, 0, ctx,
+// value, args);             },
 //         Err(err) => match err.code
 //         {
 //             CODE_NONE => unsafe
 //                 {
-//                     println!("[Wasm-Simple({})] STATE={}, method({}) ctx={:?}, args={{{:?}}}",
-//                              rid, STATE, 0, ctx, args);
-//                 }
+//                     println!("[Wasm-Simple({})] STATE={}, method({})
+// ctx={:?}, args={{{:?}}}",                              rid, STATE, 0, ctx,
+// args);                 }
 //             _ => { return err.into_result(); }
 //         },
 //     }
@@ -95,8 +108,8 @@ fn multiply(ctx: WasmCtx<TestCtxValue>, args: TestArgs) -> Result<TestRets> {
 //     vm_args.b = rid
 //     ;
 //     let vm_rets: TestRets = ctx.call_vm(0, vm_args)?;
-//     println!("[Wasm-Simple({})] call vm method({}): args={{{:?}}}, rets={}", rid, 0,
-//              vm_rets, vm_rets.get_c());
+//     println!("[Wasm-Simple({})] call vm method({}): args={{{:?}}}, rets={}",
+// rid, 0,              vm_rets, vm_rets.get_c());
 //     let mut rets = TestRets::new();
 //     rets.set_c(args.a * args.b);
 //     Ok(rets)
@@ -118,4 +131,3 @@ fn multiply(ctx: WasmCtx<TestCtxValue>, args: TestArgs) -> Result<TestRets> {
 //     ::
 //     wasmy_abi::wasm_handle(ctx_size, args_size, _inner)
 // }
-

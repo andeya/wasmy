@@ -1,9 +1,7 @@
 use std::env;
 
 use rand::random;
-
-use wasmy_abi::*;
-use wasmy_abi::test::*;
+use wasmy_abi::{test::*, *};
 
 #[no_mangle]
 fn opposite_sign(a: i32) -> i32 {
@@ -23,7 +21,13 @@ fn multiply(ctx: WasmCtx, args: TestArgs) -> Result<TestRets> {
     vm_args.a = rid;
     vm_args.b = rid;
     let vm_rets: TestRets = ctx.call_vm(0, vm_args)?;
-    println!("[Wasm-Simple({})] call vm method({}): args={{{:?}}}, rets={}", rid, 0, vm_rets, vm_rets.get_c());
+    println!(
+        "[Wasm-Simple({})] call vm method({}): args={{{:?}}}, rets={}",
+        rid,
+        0,
+        vm_rets,
+        vm_rets.get_c()
+    );
 
     let mut rets = TestRets::new();
     rets.set_c(args.a * args.b);

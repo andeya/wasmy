@@ -1,0 +1,18 @@
+# Run rustfmt with this config (it should be picked up automatically).
+version = "Two"
+unstable_features = true
+use_small_heuristics = "Max"
+merge_derives = false
+newline_style = "Unix"
+condense_wildcard_suffixes = true
+use_field_init_shorthand = true
+use_try_shorthand = true
+normalize_comments = true
+wrap_comments = true
+# imports
+imports_granularity = "Crate"
+group_imports = "StdExternalCrate"
+
+# by default we ignore everything in the repository
+# tidy only checks files which are not ignored, each entry follows gitignore style
+ignore = []

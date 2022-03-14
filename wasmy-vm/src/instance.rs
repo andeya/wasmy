@@ -1,18 +1,23 @@
 use core::ops::FnOnce;
-use std::alloc::{alloc, Layout};
-use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
-use std::sync::{Mutex, RwLock};
-use std::thread;
-use std::thread::ThreadId;
+use std::{
+    alloc::{alloc, Layout},
+    cell::{Cell, RefCell},
+    collections::HashMap,
+    sync::{Mutex, RwLock},
+    thread,
+    thread::ThreadId,
+};
 
 use lazy_static;
 use wasmer::{Exports, Function, ImportObject, Memory, MemoryView, Val, WasmerEnv};
 
-use crate::{modules, WasmUri};
-use crate::handler::*;
-use crate::modules::{FnBuildImportObject, FnCheckModule, Module};
-use crate::wasm_file::WasmFile;
+use crate::{
+    handler::*,
+    modules,
+    modules::{FnBuildImportObject, FnCheckModule, Module},
+    wasm_file::WasmFile,
+    WasmUri,
+};
 
 lazy_static::lazy_static! {
     static ref INSTANCES: RwLock<HashMap<LocalInstanceKey, Mutex<Box<Instance>>>> = RwLock::new(HashMap::new());
@@ -50,16 +55,16 @@ impl InstanceEnv {
     fn from(key: LocalInstanceKey) -> Self {
         unsafe {
             let ptr = alloc(Layout::new::<Instance>()) as *mut Instance;
-            InstanceEnv {
-                ptr,
-                key,
-            }
+            InstanceEnv { ptr, key }
         }
     }
     fn init_instance(&self, instance: Instance) {
         unsafe {
             self.ptr.write(instance);
-            INSTANCES.write().unwrap().insert(self.key.clone(), Mutex::new(Box::from_raw(self.ptr)));
+            INSTANCES
+                .write()
+                .unwrap()
+                .insert(self.key.clone(), Mutex::new(Box::from_raw(self.ptr)));
         }
     }
     fn as_instance(&self) -> &Instance {
@@ -67,22 +72,27 @@ impl InstanceEnv {
     }
 }
 
-pub(crate) fn load<B, W>(wasm_file: W, check_module: Option<FnCheckModule>, build_import_object: Option<FnBuildImportObject>) -> Result<WasmUri>
-    where B: AsRef<[u8]>,
-          W: WasmFile<B>,
+pub(crate) fn load<B, W>(
+    wasm_file: W,
+    check_module: Option<FnCheckModule>,
+    build_import_object: Option<FnBuildImportObject>,
+) -> Result<WasmUri>
+where
+    B: AsRef<[u8]>,
+    W: WasmFile<B>,
 {
     let ins = Instance::load_and_new_local(wasm_file, check_module, build_import_object)?;
     Ok(ins.key.wasm_uri.clone())
 }
 
-
 pub(crate) fn with<F, R>(wasm_uri: WasmUri, callback: F) -> Result<R>
-    where F: FnOnce(&Instance) -> Result<R>
+where
+    F: FnOnce(&Instance) -> Result<R>,
 {
     let key = LocalInstanceKey::from(wasm_uri);
     {
         if let Some(ins) = INSTANCES.read().unwrap().get(&key) {
-            return callback(&ins.lock().unwrap())
+            return callback(&ins.lock().unwrap());
         }
     }
     return callback(Instance::new_local(key)?.as_instance());
@@ -105,7 +115,11 @@ pub(crate) struct Context {
 
 impl Context {
     fn with_capacity(capacity: usize) -> Self {
-        Self { ctx_ptr: 0, ctx_bytes: Vec::with_capacity(capacity), swap_memory: Vec::with_capacity(capacity) }
+        Self {
+            ctx_ptr: 0,
+            ctx_bytes: Vec::with_capacity(capacity),
+            swap_memory: Vec::with_capacity(capacity),
+        }
     }
 
     fn set_args<C: Message>(&mut self, ctx_value: Option<&C>, in_args: InArgs) -> (usize, usize) {
@@ -148,9 +162,14 @@ impl Instance {
         }
     }
 
-    fn load_and_new_local<B, W>(wasm_file: W, check_module: Option<FnCheckModule>, build_import_object: Option<FnBuildImportObject>) -> Result<InstanceEnv>
-        where B: AsRef<[u8]>,
-              W: WasmFile<B>,
+    fn load_and_new_local<B, W>(
+        wasm_file: W,
+        check_module: Option<FnCheckModule>,
+        build_import_object: Option<FnBuildImportObject>,
+    ) -> Result<InstanceEnv>
+    where
+        B: AsRef<[u8]>,
+        W: WasmFile<B>,
     {
         let wasm_uri = modules::load(wasm_file, check_module, build_import_object)?;
         Self::from_module(
@@ -166,7 +185,11 @@ impl Instance {
         let import_object = Self::build_import_object(&module, &ins_env)?;
         if first {
             for (namespace, name, r#extern) in import_object.externs_vec() {
-                #[cfg(debug_assertions)] println!("import: namespace={namespace}, name={name}, extern_type={:?}", r#extern.ty());
+                #[cfg(debug_assertions)]
+                println!(
+                    "import: namespace={namespace}, name={name}, extern_type={:?}",
+                    r#extern.ty()
+                );
             }
         }
         let instance = Instance {
@@ -175,7 +198,11 @@ impl Instance {
             loaded: Cell::new(false),
             context: RefCell::new(Context::with_capacity(1024)),
         };
-        #[cfg(debug_assertions)]println!("[{:?}] created instance: wasm_uri={}", ins_env.key.thread_id, ins_env.key.wasm_uri);
+        #[cfg(debug_assertions)]
+        println!(
+            "[{:?}] created instance: wasm_uri={}",
+            ins_env.key.thread_id, ins_env.key.wasm_uri
+        );
 
         ins_env.init_instance(instance);
 
@@ -184,53 +211,101 @@ impl Instance {
             INSTANCES.write().unwrap().remove(&ins_env.key);
             return Err(e);
         }
-        return Ok(ins_env)
+        return Ok(ins_env);
     }
 
     fn build_import_object(module: &Module, ins_env: &InstanceEnv) -> Result<ImportObject> {
         let mut import_object = module.build_import_object(&ins_env.key)?;
-        let mut env_namespace = import_object.get_namespace_exports("env").unwrap_or_else(|| Exports::new());
-        env_namespace.insert("_wasmy_vm_recall", Function::new_native_with_env(module.module.store(), ins_env.clone(), |ins_env: &InstanceEnv, is_ctx: i32, offset: i32| {
-            let key = &ins_env.key;
-            #[cfg(debug_assertions)] println!("[VM:{:?}]_wasmy_vm_recall: wasm_uri={}, is_ctx={}, offset={}", key.thread_id, key.wasm_uri, is_ctx != 0, offset);
-            let ins = ins_env.as_instance();
-            ins.ctx_write_to(is_ctx != 0, offset as usize);
-        }));
-        env_namespace.insert("_wasmy_vm_restore", Function::new_native_with_env(module.module.store(), ins_env.clone(), |ins_env: &InstanceEnv, offset: i32, size: i32| {
-            let key = &ins_env.key;
-            #[cfg(debug_assertions)] println!("[VM:{:?}]_wasmy_vm_restore: wasm_uri={}, offset={}, size={}", key.thread_id, key.wasm_uri, offset, size);
-            let ins = ins_env.as_instance();
-            let _ = ins.use_ctx_swap_memory(size as usize, |buffer| {
-                ins.read_view_bytes(offset as usize, size as usize, buffer);
-                buffer.len()
-            });
-        }));
-        env_namespace.insert("_wasmy_vm_invoke", Function::new_native_with_env(module.module.store(), ins_env.clone(), |ins_env: &InstanceEnv, offset: i32, size: i32| -> i32 {
-            let key = &ins_env.key;
-            #[cfg(debug_assertions)] println!("[VM:{:?}]_wasmy_vm_invoke: wasm_uri={}, offset={}, size={}", key.thread_id, key.wasm_uri, offset, size);
-            let ins = ins_env.as_instance();
-            let ctx_ptr = ins.context.borrow().ctx_ptr;
-            ins.use_ctx_swap_memory(size as usize, |buffer| {
-                ins.read_view_bytes(offset as usize, size as usize, buffer);
-                write_to_vec(&vm_invoke(ctx_ptr, buffer), buffer)
-            }) as i32
-        }));
+        let mut env_namespace =
+            import_object.get_namespace_exports("env").unwrap_or_else(|| Exports::new());
+        env_namespace.insert(
+            "_wasmy_vm_recall",
+            Function::new_native_with_env(
+                module.module.store(),
+                ins_env.clone(),
+                |ins_env: &InstanceEnv, is_ctx: i32, offset: i32| {
+                    let key = &ins_env.key;
+                    #[cfg(debug_assertions)]
+                    println!(
+                        "[VM:{:?}]_wasmy_vm_recall: wasm_uri={}, is_ctx={}, offset={}",
+                        key.thread_id,
+                        key.wasm_uri,
+                        is_ctx != 0,
+                        offset
+                    );
+                    let ins = ins_env.as_instance();
+                    ins.ctx_write_to(is_ctx != 0, offset as usize);
+                },
+            ),
+        );
+        env_namespace.insert(
+            "_wasmy_vm_restore",
+            Function::new_native_with_env(
+                module.module.store(),
+                ins_env.clone(),
+                |ins_env: &InstanceEnv, offset: i32, size: i32| {
+                    let key = &ins_env.key;
+                    #[cfg(debug_assertions)]
+                    println!(
+                        "[VM:{:?}]_wasmy_vm_restore: wasm_uri={}, offset={}, size={}",
+                        key.thread_id, key.wasm_uri, offset, size
+                    );
+                    let ins = ins_env.as_instance();
+                    let _ = ins.use_ctx_swap_memory(size as usize, |buffer| {
+                        ins.read_view_bytes(offset as usize, size as usize, buffer);
+                        buffer.len()
+                    });
+                },
+            ),
+        );
+        env_namespace.insert(
+            "_wasmy_vm_invoke",
+            Function::new_native_with_env(
+                module.module.store(),
+                ins_env.clone(),
+                |ins_env: &InstanceEnv, offset: i32, size: i32| -> i32 {
+                    let key = &ins_env.key;
+                    #[cfg(debug_assertions)]
+                    println!(
+                        "[VM:{:?}]_wasmy_vm_invoke: wasm_uri={}, offset={}, size={}",
+                        key.thread_id, key.wasm_uri, offset, size
+                    );
+                    let ins = ins_env.as_instance();
+                    let ctx_ptr = ins.context.borrow().ctx_ptr;
+                    ins.use_ctx_swap_memory(size as usize, |buffer| {
+                        ins.read_view_bytes(offset as usize, size as usize, buffer);
+                        write_to_vec(&vm_invoke(ctx_ptr, buffer), buffer)
+                    }) as i32
+                },
+            ),
+        );
         import_object.register("env", env_namespace);
         Ok(import_object)
     }
 
     fn init(&self) -> Result<()> {
-        let ret = self.raw_call_wasm(WasmHandlerApi::onload_symbol(), &[]).map_or_else(|e| {
-            if e.code == CODE_NONE {
-                #[cfg(debug_assertions)]println!("[{:?}]no need initialize instance: wasm_uri={}", self.key.thread_id, self.key.wasm_uri);
+        let ret = self.raw_call_wasm(WasmHandlerApi::onload_symbol(), &[]).map_or_else(
+            |e| {
+                if e.code == CODE_NONE {
+                    #[cfg(debug_assertions)]
+                    println!(
+                        "[{:?}]no need initialize instance: wasm_uri={}",
+                        self.key.thread_id, self.key.wasm_uri
+                    );
+                    Ok(())
+                } else {
+                    e.into_result()
+                }
+            },
+            |_| {
+                #[cfg(debug_assertions)]
+                println!(
+                    "[{:?}]initialized instance: wasm_uri={}",
+                    self.key.thread_id, self.key.wasm_uri
+                );
                 Ok(())
-            } else {
-                e.into_result()
-            }
-        }, |_| {
-            #[cfg(debug_assertions)]println!("[{:?}]initialized instance: wasm_uri={}", self.key.thread_id, self.key.wasm_uri);
-            Ok(())
-        });
+            },
+        );
         self.loaded.set(true);
         ret
     }
@@ -246,25 +321,37 @@ impl Instance {
         self.inner_handle_wasm(None::<Empty>, method, in_args)
     }
     #[inline]
-    pub fn ctx_handle_wasm<C: Message>(&self, ctx_value: C, method: Method, in_args: InArgs) -> Result<OutRets> {
+    pub fn ctx_handle_wasm<C: Message>(
+        &self,
+        ctx_value: C,
+        method: Method,
+        in_args: InArgs,
+    ) -> Result<OutRets> {
         self.inner_handle_wasm(Some(ctx_value), method, in_args)
     }
     #[inline]
-    fn inner_handle_wasm<C: Message>(&self, ctx_value: Option<C>, method: Method, in_args: InArgs) -> Result<OutRets> {
+    fn inner_handle_wasm<C: Message>(
+        &self,
+        ctx_value: Option<C>,
+        method: Method,
+        in_args: InArgs,
+    ) -> Result<OutRets> {
         self.check_loaded()?;
-        #[cfg(debug_assertions)] println!("method={}, data={:?}", in_args.get_method(), in_args.get_data());
+        #[cfg(debug_assertions)]
+        println!("method={}, data={:?}", in_args.get_method(), in_args.get_data());
         let (ctx_size, args_size) = self.context.borrow_mut().set_args(ctx_value.as_ref(), in_args);
         let sign_name = WasmHandlerApi::method_to_symbol(method);
-        self.raw_call_wasm(sign_name.as_str(), &[Val::I32(ctx_size as i32), Val::I32(args_size as i32)])?;
+        self.raw_call_wasm(
+            sign_name.as_str(),
+            &[Val::I32(ctx_size as i32), Val::I32(args_size as i32)],
+        )?;
         Ok(self.context.borrow_mut().out_rets())
     }
     pub fn exports(&self) -> &Exports {
         &self.instance.exports
     }
     pub fn raw_call_wasm(&self, sign_name: &str, args: &[Val]) -> Result<Box<[Val]>> {
-        let f = self.exports()
-                    .get_function(sign_name)
-                    .map_err(|e| CodeMsg::new(CODE_NONE, e))?;
+        let f = self.exports().get_function(sign_name).map_err(|e| CodeMsg::new(CODE_NONE, e))?;
         loop {
             let rets = f.call(&args);
             match rets {
@@ -278,7 +365,10 @@ impl Instance {
                                 println!("memory grow, previous memory size: {:?}", p);
                             }
                             Err(e) => {
-                                return CodeMsg::result(CODE_MEM, format!("failed to memory grow: {:?}", e))
+                                return CodeMsg::result(
+                                    CODE_MEM,
+                                    format!("failed to memory grow: {:?}", e),
+                                );
                             }
                         }
                     }
@@ -288,17 +378,20 @@ impl Instance {
     }
     fn ctx_write_to(&self, is_ctx: bool, offset: usize) {
         let mut ctx = self.context.borrow_mut();
-        let cache: &mut Vec<u8> = if is_ctx {
-            ctx.ctx_bytes.as_mut()
-        } else {
-            ctx.swap_memory.as_mut()
-        };
+        let cache: &mut Vec<u8> =
+            if is_ctx { ctx.ctx_bytes.as_mut() } else { ctx.swap_memory.as_mut() };
         self.set_view_bytes(offset as usize, cache.iter());
         if !is_ctx {
-            unsafe { cache.set_len(0); }
+            unsafe {
+                cache.set_len(0);
+            }
         }
     }
-    pub(crate) fn use_ctx_swap_memory<F: FnOnce(&mut Vec<u8>) -> usize>(&self, size: usize, call: F) -> usize {
+    pub(crate) fn use_ctx_swap_memory<F: FnOnce(&mut Vec<u8>) -> usize>(
+        &self,
+        size: usize,
+        call: F,
+    ) -> usize {
         let mut ctx = self.context.borrow_mut();
         let cache: &mut Vec<u8> = ctx.swap_memory.as_mut();
         if size > 0 {
@@ -312,7 +405,11 @@ impl Instance {
     fn get_view(&self) -> MemoryView<u8> {
         self.get_memory().view::<u8>()
     }
-    fn set_view_bytes<'a>(&self, offset: usize, data: impl IntoIterator<Item=&'a u8> + ExactSizeIterator) {
+    fn set_view_bytes<'a>(
+        &self,
+        offset: usize,
+        data: impl IntoIterator<Item = &'a u8> + ExactSizeIterator,
+    ) {
         let view = self.get_view();
         for (cell, b) in view[offset..offset + data.len()].iter().zip(data) {
             cell.set(*b);
@@ -324,14 +421,11 @@ impl Instance {
             return;
         }
         let view = self.get_view();
-        for x in view[offset..(offset + size)]
-            .iter()
-            .map(|c| c.get()).enumerate() {
+        for x in view[offset..(offset + size)].iter().map(|c| c.get()).enumerate() {
             buffer[x.0] = x.1;
         }
     }
 }
-
 
 fn write_to_vec(msg: &dyn Message, buffer: &mut Vec<u8>) -> usize {
     let size = msg.compute_size() as usize;
@@ -341,8 +435,7 @@ fn write_to_vec(msg: &dyn Message, buffer: &mut Vec<u8>) -> usize {
 
 fn write_to_with_cached_sizes(msg: &dyn Message, buffer: &mut Vec<u8>) -> usize {
     let mut os = CodedOutputStream::bytes(buffer);
-    msg.write_to_with_cached_sizes(&mut os)
-       .or_else(|e| Err(format!("{}", e))).unwrap();
+    msg.write_to_with_cached_sizes(&mut os).or_else(|e| Err(format!("{}", e))).unwrap();
     // os.flush().unwrap();
     buffer.len()
 }

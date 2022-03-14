@@ -1,10 +1,8 @@
 use std::marker::PhantomData;
 
-pub use protobuf::{CodedOutputStream, Message, ProtobufEnum};
-pub use protobuf::well_known_types::Any;
+pub use protobuf::{well_known_types::Any, CodedOutputStream, Message, ProtobufEnum};
 
-use crate::abi::*;
-use crate::types::*;
+use crate::{abi::*, types::*};
 
 // The ABI interaction functions of the virtual machine.
 extern "C" {
@@ -18,10 +16,10 @@ const IS_CTX: i32 = 1;
 
 /// The underlying function of wasm to handle requests.
 pub fn wasm_handle<F, W, Value>(ctx_size: i32, args_size: i32, handle: F)
-    where
-        F: Fn(W, InArgs) -> Result<Any>,
-        W: WasmContext<Value>,
-        Value: Message,
+where
+    F: Fn(W, InArgs) -> Result<Any>,
+    W: WasmContext<Value>,
+    Value: Message,
 {
     if args_size <= 0 {
         return;
@@ -29,12 +27,8 @@ pub fn wasm_handle<F, W, Value>(ctx_size: i32, args_size: i32, handle: F)
     let mut buffer = vec![0u8; args_size as usize];
     unsafe { _wasmy_vm_recall(NON_CTX, buffer.as_ptr() as i32) };
     let res: OutRets = match InArgs::parse_from_bytes(&buffer) {
-        Ok(args) => {
-            handle(W::from_size(ctx_size as usize), args).into()
-        }
-        Err(err) => {
-            CodeMsg::new(CODE_PROTO, err).into()
-        }
+        Ok(args) => handle(W::from_size(ctx_size as usize), args).into(),
+        Err(err) => CodeMsg::new(CODE_PROTO, err).into(),
     };
     let size = res.compute_size() as usize;
     if size > buffer.capacity() {
@@ -60,12 +54,8 @@ pub trait WasmContext<Value: Message = Empty> {
             let buffer = vec![0u8; self.size()];
             unsafe { _wasmy_vm_recall(IS_CTX, buffer.as_ptr() as i32) };
             match Value::parse_from_bytes(&buffer) {
-                Ok(ctx) => {
-                    Ok(ctx)
-                }
-                Err(err) => {
-                    CodeMsg::result(CODE_PROTO, err)
-                }
+                Ok(ctx) => Ok(ctx),
+                Err(err) => CodeMsg::result(CODE_PROTO, err),
             }
         }
     }
@@ -78,8 +68,7 @@ pub trait WasmContext<Value: Message = Empty> {
         }
         buffer.resize(size as usize, 0);
         unsafe { _wasmy_vm_recall(NON_CTX, buffer.as_ptr() as i32) };
-        OutRets::parse_from_bytes(buffer.as_slice())?
-            .into()
+        OutRets::parse_from_bytes(buffer.as_slice())?.into()
     }
 }
 

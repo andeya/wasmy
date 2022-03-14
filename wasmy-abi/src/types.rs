@@ -1,11 +1,6 @@
-use std::convert::Infallible;
-use std::fmt::Formatter;
-use std::marker::PhantomData;
-use std::mem;
-use std::ops::FromResidual;
+use std::{convert::Infallible, fmt::Formatter, marker::PhantomData, mem, ops::FromResidual};
 
-pub use protobuf::{CodedOutputStream, Message, ProtobufEnum};
-pub use protobuf::well_known_types::Any;
+pub use protobuf::{well_known_types::Any, CodedOutputStream, Message, ProtobufEnum};
 
 use crate::abi::*;
 
@@ -61,11 +56,7 @@ impl std::fmt::Display for CodeMsg {
 
 impl From<anyhow::Error> for CodeMsg {
     fn from(e: anyhow::Error) -> Self {
-        if e.is::<CodeMsg>() {
-            e.downcast().unwrap()
-        } else {
-            CodeMsg::new(CODE_UNKNOWN, e)
-        }
+        if e.is::<CodeMsg>() { e.downcast().unwrap() } else { CodeMsg::new(CODE_UNKNOWN, e) }
     }
 }
 
@@ -92,12 +83,15 @@ impl<R: Message> From<OutRets> for Result<R> {
         if out_rets.get_code() != 0 {
             return CodeMsg::result(out_rets.get_code(), out_rets.get_msg());
         }
-        out_rets.get_data()
-                .unpack::<R>()?
-            .map_or_else(
-                || CodeMsg::result(CODE_PROTO, "protobuf: the message type does not match the out_rets"),
-                |data| Ok(data),
-            )
+        out_rets.get_data().unpack::<R>()?.map_or_else(
+            || {
+                CodeMsg::result(
+                    CODE_PROTO,
+                    "protobuf: the message type does not match the out_rets",
+                )
+            },
+            |data| Ok(data),
+        )
     }
 }
 
@@ -109,21 +103,18 @@ impl InArgs {
         Ok(args)
     }
     pub fn get_args<R: Message>(&self) -> Result<R> {
-        self.get_data()
-            .unpack::<R>()?
-            .map_or_else(
-                || CodeMsg::result(CODE_PROTO, "protobuf: the message type does not match the in_args"),
-                |data| Ok(data),
-            )
+        self.get_data().unpack::<R>()?.map_or_else(
+            || CodeMsg::result(CODE_PROTO, "protobuf: the message type does not match the in_args"),
+            |data| Ok(data),
+        )
     }
 }
 
 pub fn unpack_any<R: Message>(data: &Any) -> Result<R> {
-    data.unpack::<R>()?
-        .map_or_else(
-            || CodeMsg::result(CODE_PROTO, "protobuf: the message type does not match the data"),
-            |r| Ok(r),
-        )
+    data.unpack::<R>()?.map_or_else(
+        || CodeMsg::result(CODE_PROTO, "protobuf: the message type does not match the data"),
+        |r| Ok(r),
+    )
 }
 
 pub fn pack_any<R: Message>(mut data: R) -> Result<Any> {
@@ -171,7 +162,7 @@ impl<R: Message> From<Result<R>> for OutRets {
                 }
                 res
             }
-            Err(e) => { e.into() }
+            Err(e) => e.into(),
         }
     }
 }
@@ -186,7 +177,9 @@ impl FromResidual<Result<Infallible>> for OutRets {
     fn from_residual(residual: Result<Infallible>) -> Self {
         match residual {
             Err(e) => e.into(),
-            _ => { unreachable!() }
+            _ => {
+                unreachable!()
+            }
         }
     }
 }

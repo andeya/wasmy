@@ -1,10 +1,9 @@
-use proc_macro::TokenStream;
 use std::ops::Deref;
 
+use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::quote;
-use syn::{FnArg, ItemFn, Lit, Pat, Signature};
-use syn::parse::Parser;
+use syn::{parse::Parser, FnArg, ItemFn, Lit, Pat, Signature};
 
 // syn::AttributeArgs does not implement syn::Parse
 type AttributeArgs = syn::punctuated::Punctuated<syn::NestedMeta, syn::Token![,]>;
@@ -21,7 +20,8 @@ type AttributeArgs = syn::punctuated::Punctuated<syn::NestedMeta, syn::Token![,]
 /// #[vm_handle(123)]
 /// fn yyy<C: wasmy_abi::Message, A: wasmy_abi::Message, R: wasmy_abi::Message>(ctx: Option<&C>, args: A) -> wasmy_abi::Result<R> {todo!()}
 /// ```
-/// command to check expanded code: `cargo +nightly rustc -- -Zunstable-options --pretty=expanded`
+/// command to check expanded code: `cargo +nightly rustc -- -Zunstable-options
+/// --pretty=expanded`
 #[proc_macro_attribute]
 #[cfg(not(test))] // Work around for rust-lang/rust#62127
 pub fn vm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
@@ -60,7 +60,8 @@ pub fn vm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
-    #[cfg(debug_assertions)] println!("{}", new_item);
+    #[cfg(debug_assertions)]
+    println!("{}", new_item);
     TokenStream::from(new_item)
 }
 
@@ -71,7 +72,8 @@ pub fn vm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
 /// #[wasm_handle(method=123)]
 /// fn xxx<W: wasmy_abi::WasmContext<Value>, Value: wasmy_abi::Message, A: wasmy_abi::Message, R: wasmy_abi::Message>(ctx: W, args: A) -> wasmy_abi::Result<R> {todo!()}
 /// ```
-/// command to check expanded code: `cargo +nightly rustc -- -Zunstable-options --pretty=expanded`
+/// command to check expanded code: `cargo +nightly rustc -- -Zunstable-options
+/// --pretty=expanded`
 #[proc_macro_attribute]
 #[cfg(not(test))] // Work around for rust-lang/rust#62127
 pub fn wasm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
@@ -92,24 +94,27 @@ pub fn wasm_handle(args: TokenStream, item: TokenStream) -> TokenStream {
     };
     new_item.extend(TokenStream::from(outer_item));
 
-    #[cfg(debug_assertions)] println!("{}", new_item);
+    #[cfg(debug_assertions)]
+    println!("{}", new_item);
 
     new_item
 }
-
 
 fn wasm_gen_inner(raw_sig: Signature) -> (Ident, proc_macro2::TokenStream) {
     let inner_ident = Ident::new("_inner", Span::call_site());
     let raw_ident = raw_sig.ident.clone();
     let raw_first_input = raw_sig.inputs.first().unwrap();
     let fn_args = fn_arg_ident(raw_first_input);
-    (inner_ident.clone(), quote! {
-        #[allow(unused_mut)]
-        #[inline]
-        fn #inner_ident(#raw_first_input, args: ::wasmy_abi::InArgs) -> ::wasmy_abi::Result<::wasmy_abi::Any> {
-           ::wasmy_abi::pack_any(#raw_ident(#fn_args, args.get_args()?)?)
-        }
-    })
+    (
+        inner_ident.clone(),
+        quote! {
+            #[allow(unused_mut)]
+            #[inline]
+            fn #inner_ident(#raw_first_input, args: ::wasmy_abi::InArgs) -> ::wasmy_abi::Result<::wasmy_abi::Any> {
+               ::wasmy_abi::pack_any(#raw_ident(#fn_args, args.get_args()?)?)
+            }
+        },
+    )
 }
 
 /// Register the ABI for wasm load-time initialization state.
@@ -120,7 +125,8 @@ fn wasm_gen_inner(raw_sig: Signature) -> (Ident, proc_macro2::TokenStream) {
 /// #[wasm_onload]
 /// fn xxx() {}
 /// ```
-/// command to check expanded code: `cargo +nightly rustc -- -Zunstable-options --pretty=expanded`
+/// command to check expanded code: `cargo +nightly rustc -- -Zunstable-options
+/// --pretty=expanded`
 #[proc_macro_attribute]
 #[cfg(not(test))] // Work around for rust-lang/rust#62127
 pub fn wasm_onload(_args: TokenStream, item: TokenStream) -> TokenStream {
@@ -136,7 +142,8 @@ pub fn wasm_onload(_args: TokenStream, item: TokenStream) -> TokenStream {
             #raw_ident();
         }
     };
-    #[cfg(debug_assertions)] println!("{}", new_item);
+    #[cfg(debug_assertions)]
+    println!("{}", new_item);
     TokenStream::from(new_item)
 }
 
@@ -147,10 +154,9 @@ fn parse_method(marco_name: &str, input: TokenStream) -> Result<i32, syn::Error>
     }
     let err = syn::Error::new_spanned(
         proc_macro2::TokenStream::from(input.clone()),
-        format!("#[{0}(i32)] or #[{0}(method=i32)]", marco_name));
-    let attr = AttributeArgs::parse_terminated
-        .parse(input)
-        .or(Err(err.clone()))?;
+        format!("#[{0}(i32)] or #[{0}(method=i32)]", marco_name),
+    );
+    let attr = AttributeArgs::parse_terminated.parse(input).or(Err(err.clone()))?;
     for arg in attr {
         match arg {
             syn::NestedMeta::Meta(syn::Meta::NameValue(namevalue)) => {
@@ -171,22 +177,20 @@ fn parse_method(marco_name: &str, input: TokenStream) -> Result<i32, syn::Error>
                                 }
                             }
                         }
-                        return Err(syn::Error::new_spanned(namevalue, "attribute method is not i32 greater than or equal to 0"));
+                        return Err(syn::Error::new_spanned(
+                            namevalue,
+                            "attribute method is not i32 greater than or equal to 0",
+                        ));
                     }
                     name => {
-                        let msg = format!(
-                            "Unknown attribute {} is specified; expected `method`",
-                            name,
-                        );
+                        let msg =
+                            format!("Unknown attribute {} is specified; expected `method`", name,);
                         return Err(syn::Error::new_spanned(namevalue, msg));
                     }
                 }
             }
             other => {
-                return Err(syn::Error::new_spanned(
-                    other,
-                    "Unknown attribute inside the macro",
-                ));
+                return Err(syn::Error::new_spanned(other, "Unknown attribute inside the macro"));
             }
         }
     }
