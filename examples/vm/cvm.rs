@@ -18,13 +18,14 @@ fn main() {
                     println!("export function: {:?}", x);
                 }
                 Ok(())
-            }), Some(|builder: &mut WasiStateBuilder, module: &Module, key: &LocalInstanceKey| -> Result<ImportObject>{
+            }), Some(|module: &Module, key: &LocalInstanceKey| -> Result<ImportObject>{
+                let mut builder: WasiStateBuilder = WasiState::new(key.wasm_uri());
                 let mut import_object = builder
                     .arg("-v true")
                     .env("AUTHOR", "henrylee2cn")
                     .finalize()?
                     .import_object(module)?;
-                import_object.register("env", import_namespace! ({
+                import_object.register("env", import_namespace!({
                     "custom_a" => Function::new_native_with_env(module.store(), key.clone(), |key: &LocalInstanceKey, a: i32| {
                         #[cfg(debug_assertions)] println!("[VM:{:?}]custom_a: wasm_uri={}, a={}", key.thread_id(), key.wasm_uri(), a);
                     }),
