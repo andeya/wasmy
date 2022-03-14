@@ -360,7 +360,7 @@ impl Instance {
     pub fn exports(&self) -> &Exports {
         &self.instance.exports
     }
-    fn mut_context(&self) -> RefMut<'_, Context> {
+    pub fn mut_context(&self) -> RefMut<'_, Context> {
         self.context.borrow_mut()
     }
     pub fn raw_call_wasm<F>(&self, sign_name: &str, args: &[Val], ctx_opt: F) -> Result<Box<[Val]>>
