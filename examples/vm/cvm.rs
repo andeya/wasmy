@@ -3,7 +3,7 @@
 use wasmy_vm::*;
 
 use crate::{
-    test::{TestArgs, TestRets},
+    test::{TestArgs, TestCtxValue, TestRets},
     vm::{run, Mode},
 };
 
@@ -35,12 +35,18 @@ fn main() {
             })).unwrap()
         },
         |index: usize, wasm_caller: WasmCaller| {
+            let mut ctx_value = TestCtxValue::new();
+            ctx_value.set_value(env!("CARGO_PKG_VERSION").to_string());
             let mut data = TestArgs::new();
             data.set_a(2);
             data.set_b(5);
-            let rets: TestRets = wasm_caller.call(0, data.clone()).unwrap();
+            let rets: TestRets = wasm_caller.ctx_call(ctx_value.clone(), 0, data.clone()).unwrap();
             println!("NO.{}: {}+{}={}", index, data.get_a(), data.get_b(), rets.get_c());
-            let rets = wasm_caller.raw_call("opposite_sign", &[(index as i32).into()]);
+            let rets = wasm_caller.raw_call("opposite_sign", &[(index as i32).into()], |ctx| {
+                ctx.set_value_ptr(&ctx_value);
+                ctx.value_bytes = ctx_value.write_to_bytes().unwrap();
+                println!("set ctx: {:?}", ctx);
+            });
             match rets {
                 Ok(r) => println!("NO.{}: -{}={}", index, index, r[0].unwrap_i32()),
                 Err(e) => eprintln!("{}", e),
@@ -52,29 +58,11 @@ fn main() {
 // Make sure the mod is linked
 fn link_mod() {
     #[vm_handle(0)]
-    fn add(args: TestArgs) -> Result<TestRets> {
+    fn add(ctx: Option<&TestCtxValue>, args: TestArgs) -> Result<TestRets> {
+        println!("[VM] add handler, ctx={:?}", ctx);
         let mut rets = TestRets::new();
         rets.set_c(args.a + args.b);
         Ok(rets)
     }
     // more #[vm_handle(i32)] fn ...
 }
-
-// Expanded codes:
-//
-// fn add(args: TestArgs) -> Result<TestRets>
-// {
-//     let mut rets = TestRets::new();
-//     rets.set_c(args.a + args.b);
-//     Ok(rets)
-// }
-//
-// #[allow(redundant_semicolons)]
-// fn
-// _wasmy_vm_handle_0(_ctx_ptr: usize, args: &::wasmy_vm::Any) -> ::wasmy_vm::
-// Result<::wasmy_vm::Any>
-// {
-//     add(::wasmy_vm::VmHandlerApi::unpack_any(args)
-//         ?).and_then(|res| ::wasmy_vm::VmHandlerApi::pack_any(res))
-// } ::wasmy_vm::submit_handler! { :: wasmy_vm :: VmHandlerApi :: new(0i32,
-// _wasmy_vm_handle_0) }

@@ -32,7 +32,13 @@ impl VmHandlerApi {
         unpack_any(data)
     }
     pub unsafe fn try_as<T: Message>(ptr: usize) -> Option<&'static T> {
-        if ptr > 0 { Some(&*(ptr as *const T)) } else { None }
+        if ptr > 0 {
+            let ptr = ptr as *const T;
+            if !ptr.is_null() {
+                return Some(&*ptr);
+            }
+        }
+        None
     }
     pub(crate) fn collect_and_register_once() {
         COLLECT_AND_REGISTER_ONCE.call_once(|| collect_and_register_handlers());

@@ -1,7 +1,7 @@
 use core::ops::FnOnce;
 use std::{
     alloc::{alloc, Layout},
-    cell::{Cell, RefCell},
+    cell::{Cell, RefCell, RefMut},
     collections::HashMap,
     sync::{Mutex, RwLock},
     thread,
@@ -107,19 +107,27 @@ pub struct Instance {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct Context {
-    ctx_ptr: usize,
-    ctx_bytes: Vec<u8>,
-    swap_memory: Vec<u8>,
+pub struct Context {
+    value_ptr: usize,
+    pub value_bytes: Vec<u8>,
+    pub swap_memory: Vec<u8>,
 }
 
 impl Context {
     fn with_capacity(capacity: usize) -> Self {
         Self {
-            ctx_ptr: 0,
-            ctx_bytes: Vec::with_capacity(capacity),
+            value_ptr: 0,
+            value_bytes: Vec::with_capacity(capacity),
             swap_memory: Vec::with_capacity(capacity),
         }
+    }
+
+    pub fn set_value_ptr<T>(&mut self, ptr: &T) {
+        self.value_ptr = ptr as *const T as usize;
+    }
+
+    pub fn value_ptr<T>(&self) -> *const T {
+        self.value_ptr as *const T
     }
 
     fn set_args<C: Message>(&mut self, ctx_value: Option<&C>, in_args: InArgs) -> (usize, usize) {
@@ -128,17 +136,17 @@ impl Context {
             unsafe { self.swap_memory.set_len(0) }
         }
         let ctx_size = if let Some(val) = ctx_value {
-            self.ctx_ptr = val as *const C as usize;
-            write_to_vec(val, &mut self.ctx_bytes)
+            self.value_ptr = val as *const C as usize;
+            write_to_vec(val, &mut self.value_bytes)
         } else {
-            unsafe { self.ctx_bytes.set_len(0) };
+            unsafe { self.value_bytes.set_len(0) };
             0
         };
         (ctx_size, args_size)
     }
 
     fn out_rets(&mut self) -> OutRets {
-        unsafe { self.ctx_bytes.set_len(0) };
+        unsafe { self.value_bytes.set_len(0) };
         let res = if self.swap_memory.len() > 0 {
             OutRets::parse_from_bytes(self.swap_memory.as_slice()).unwrap()
         } else {
@@ -271,7 +279,7 @@ impl Instance {
                         key.thread_id, key.wasm_uri, offset, size
                     );
                     let ins = ins_env.as_instance();
-                    let ctx_ptr = ins.context.borrow().ctx_ptr;
+                    let ctx_ptr = ins.context.borrow().value_ptr;
                     ins.use_ctx_swap_memory(size as usize, |buffer| {
                         ins.read_view_bytes(offset as usize, size as usize, buffer);
                         write_to_vec(&vm_invoke(ctx_ptr, buffer), buffer)
@@ -284,7 +292,7 @@ impl Instance {
     }
 
     fn init(&self) -> Result<()> {
-        let ret = self.raw_call_wasm(WasmHandlerApi::onload_symbol(), &[]).map_or_else(
+        let ret = self.raw_call_wasm(WasmHandlerApi::onload_symbol(), &[], |_| {}).map_or_else(
             |e| {
                 if e.code == CODE_NONE {
                     #[cfg(debug_assertions)]
@@ -344,13 +352,21 @@ impl Instance {
         self.raw_call_wasm(
             sign_name.as_str(),
             &[Val::I32(ctx_size as i32), Val::I32(args_size as i32)],
+            |_| {},
         )?;
         Ok(self.context.borrow_mut().out_rets())
     }
     pub fn exports(&self) -> &Exports {
         &self.instance.exports
     }
-    pub fn raw_call_wasm(&self, sign_name: &str, args: &[Val]) -> Result<Box<[Val]>> {
+    fn mut_context(&self) -> RefMut<'_, Context> {
+        self.context.borrow_mut()
+    }
+    pub fn raw_call_wasm<F>(&self, sign_name: &str, args: &[Val], ctx_opt: F) -> Result<Box<[Val]>>
+    where
+        F: FnOnce(&mut Context),
+    {
+        ctx_opt(&mut self.mut_context());
         let f = self.exports().get_function(sign_name).map_err(|e| CodeMsg::new(CODE_NONE, e))?;
         loop {
             let rets = f.call(&args);
@@ -379,7 +395,7 @@ impl Instance {
     fn ctx_write_to(&self, is_ctx: bool, offset: usize) {
         let mut ctx = self.context.borrow_mut();
         let cache: &mut Vec<u8> =
-            if is_ctx { ctx.ctx_bytes.as_mut() } else { ctx.swap_memory.as_mut() };
+            if is_ctx { ctx.value_bytes.as_mut() } else { ctx.swap_memory.as_mut() };
         self.set_view_bytes(offset as usize, cache.iter());
         if !is_ctx {
             unsafe {

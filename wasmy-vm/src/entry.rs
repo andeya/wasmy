@@ -5,7 +5,7 @@ use crate::{
     instance,
     modules::{FnBuildImportObject, FnCheckModule},
     wasm_file::WasmFile,
-    Instance, WasmUri,
+    Context, Instance, WasmUri,
 };
 
 pub fn load_wasm<B, W>(wasm_file: W) -> Result<WasmCaller>
@@ -69,9 +69,12 @@ impl WasmCaller {
         })
     }
     // // Execute the raw call to wasm.
-    pub fn raw_call(&self, sign_name: &str, args: &[Val]) -> Result<Box<[Val]>> {
+    pub fn raw_call<F>(&self, sign_name: &str, args: &[Val], ctx_opt: F) -> Result<Box<[Val]>>
+    where
+        F: FnOnce(&mut Context),
+    {
         instance::with(self.0.clone(), |ins| -> Result<Box<[Val]>> {
-            ins.raw_call_wasm(sign_name, args)
+            ins.raw_call_wasm(sign_name, args, ctx_opt)
         })
     }
     /// Get instance and do custom operations.

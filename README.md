@@ -12,7 +12,7 @@ wasmy, easily customize my wasm app!
 - [x] Provides context, layering friendly
 - [x] Features a security sandbox
 - [x] Use protobuf as the interaction protocol
-- [x] Support custom import objects
+- [x] Support custom ABI
 
 ## crates
 
