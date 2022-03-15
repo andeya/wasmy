@@ -16,7 +16,7 @@ readme = "./README.md"
 
 
 [target.'cfg(not(target_family="wasm"))'.dev-dependencies]
-wasmy-vm = "0.5.5"
+wasmy-vm = { version ="0.5.5", features = [] }
 structopt = { version = "0.3", features = ["color"] }
 tokio = { version = "1.17.0", features = ["macros", "rt", "rt-multi-thread"] }
 [[example]]

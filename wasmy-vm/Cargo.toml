@@ -20,10 +20,13 @@ inventory = "0.2.2"
 wasmer = "2.0.0"
 wasmer-engine-universal = "2.0.0"
 wasmer-wasi = "2.0.0"
-wasmer-compiler-cranelift = { version = "2.0.0" }
+wasmer-compiler-cranelift = { version = "2.0.0", optional = true }
+wasmer-compiler-llvm = { version = "2.0.0", optional = true }
 serde = { version = "1.0", features = ["derive"] }
 anyhow = "1"
 protobuf = { version = "2", features = ["with-bytes"] }
 lazy_static = "1.4.0"
 
 [features]
+default = ["wasmer-compiler-cranelift"]
+llvm = ["wasmer-compiler-llvm"]

@@ -2,7 +2,6 @@ use std::{collections::HashMap, sync::RwLock};
 
 use lazy_static;
 use wasmer::{ImportObject, Store, Type};
-use wasmer_compiler_cranelift::Cranelift;
 use wasmer_engine_universal::Universal;
 use wasmer_wasi::{WasiState, WasiStateBuilder};
 use wasmy_abi::{CodeMsg, Result, CODE_EXPORTS};
@@ -42,7 +41,20 @@ where
 
     #[cfg(debug_assertions)]
     println!("compiling module, wasm_uri={}...", wasm_uri);
-    let store: Store = Store::new(&Universal::new(Cranelift::default()).engine());
+
+    let compiler_config;
+
+    #[cfg(not(feature = "llvm"))]
+    {
+        compiler_config = wasmer_compiler_cranelift::Cranelift::default();
+    }
+
+    #[cfg(feature = "llvm")]
+    {
+        compiler_config = wasmer_compiler_llvm::LLVM::default();
+    }
+
+    let store: Store = Store::new(&Universal::new(compiler_config).engine());
     let mut module = wasmer::Module::new(&store, bytes)?;
     module.set_name(wasm_uri.as_str());
     if let Some(cf) = check_module {
