@@ -69,12 +69,18 @@ impl WasmCaller {
         })
     }
     // // Execute the raw call to wasm.
-    pub fn raw_call<F>(&self, sign_name: &str, args: &[Val], ctx_opt: F) -> Result<Box<[Val]>>
+    pub fn raw_call<B, A, R>(&self, sign_name: &str, do_args: B, do_rets: A) -> Result<R>
     where
-        F: FnOnce(&mut Context),
+        B: FnOnce(&mut Context) -> Result<Box<[Val]>>,
+        A: FnOnce(&Context, Box<[Val]>) -> Result<R>,
     {
-        instance::with(self.0.clone(), |ins| -> Result<Box<[Val]>> {
-            ins.raw_call_wasm(sign_name, args, ctx_opt)
+        instance::with(self.0.clone(), |ins| -> Result<R> {
+            let ctx = &mut ins.mut_context();
+            let args = do_args(ctx)?;
+            let rets = ins.raw_call_wasm(sign_name, &args)?;
+            let rets = do_rets(ctx, rets)?;
+            ctx.reverted();
+            Ok(rets)
         })
     }
     /// Get instance and do custom operations.

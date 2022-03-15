@@ -147,14 +147,21 @@ impl Context {
     }
 
     fn out_rets(&mut self) -> OutRets {
-        unsafe { self.value_bytes.set_len(0) };
         let res = if self.swap_memory.len() > 0 {
             OutRets::parse_from_bytes(self.swap_memory.as_slice()).unwrap()
         } else {
             OutRets::new()
         };
-        unsafe { self.swap_memory.set_len(0) };
+        self.reverted();
         res
+    }
+
+    pub(crate) fn reverted(&mut self) {
+        unsafe {
+            self.value_ptr = 0;
+            self.value_bytes.set_len(0);
+            self.swap_memory.set_len(0);
+        };
     }
 }
 
@@ -293,7 +300,7 @@ impl Instance {
     }
 
     fn init(&self) -> Result<()> {
-        let ret = self.raw_call_wasm(WasmHandlerApi::onload_symbol(), &[], |_| {}).map_or_else(
+        let ret = self.raw_call_wasm(WasmHandlerApi::onload_symbol(), &[]).map_or_else(
             |e| {
                 if e.code == CODE_NONE {
                     #[cfg(debug_assertions)]
@@ -353,7 +360,6 @@ impl Instance {
         self.raw_call_wasm(
             sign_name.as_str(),
             &[Val::I32(ctx_size as i32), Val::I32(args_size as i32)],
-            |_| {},
         )?;
         Ok(self.context.borrow_mut().out_rets())
     }
@@ -363,11 +369,7 @@ impl Instance {
     pub fn mut_context(&self) -> RefMut<'_, Context> {
         self.context.borrow_mut()
     }
-    pub fn raw_call_wasm<F>(&self, sign_name: &str, args: &[Val], ctx_opt: F) -> Result<Box<[Val]>>
-    where
-        F: FnOnce(&mut Context),
-    {
-        ctx_opt(&mut self.mut_context());
+    pub fn raw_call_wasm(&self, sign_name: &str, args: &[Val]) -> Result<Box<[Val]>> {
         let f = self.exports().get_function(sign_name).map_err(|e| CodeMsg::new(CODE_NONE, e))?;
         loop {
             let rets = f.call(&args);

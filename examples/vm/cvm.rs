@@ -42,13 +42,18 @@ fn main() {
             data.set_b(5);
             let rets: TestRets = wasm_caller.ctx_call(ctx_value.clone(), 0, data.clone()).unwrap();
             println!("NO.{}: {}+{}={}", index, data.get_a(), data.get_b(), rets.get_c());
-            let rets = wasm_caller.raw_call("opposite_sign", &[(index as i32).into()], |ctx| {
-                ctx.set_value_ptr(&ctx_value);
-                ctx.value_bytes = ctx_value.write_to_bytes().unwrap();
-                println!("set ctx: {:?}", ctx);
-            });
+            let rets = wasm_caller.raw_call(
+                "opposite_sign",
+                |ctx| {
+                    ctx.set_value_ptr(&ctx_value);
+                    ctx.value_bytes = ctx_value.write_to_bytes().unwrap();
+                    println!("set ctx: {:?}", ctx);
+                    Ok(vec![(index as i32).into()].into_boxed_slice())
+                },
+                |_ctx, rets| Ok(rets[0].unwrap_i32()),
+            );
             match rets {
-                Ok(r) => println!("NO.{}: -{}={}", index, index, r[0].unwrap_i32()),
+                Ok(r) => println!("NO.{}: -{}={}", index, index, r),
                 Err(e) => eprintln!("{}", e),
             }
         },
