@@ -99,13 +99,13 @@ fn handle(ctx_ptr: usize, args: InArgs) -> OutRets {
 pub(crate) struct WasmHandlerApi();
 
 impl WasmHandlerApi {
-    pub const fn onload_symbol() -> &'static str {
+    pub(crate) const fn onload_symbol() -> &'static str {
         "_wasmy_wasm_onload"
     }
-    pub fn method_to_symbol(method: WasmMethod) -> String {
+    pub(crate) fn method_to_symbol(method: WasmMethod) -> String {
         format!("_wasmy_wasm_handle_{}", method)
     }
-    pub fn symbol_to_method(symbol: &str) -> Option<WasmMethod> {
+    pub(crate) fn symbol_to_method(symbol: &str) -> Option<WasmMethod> {
         if let Some(s) = symbol.strip_prefix("_wasmy_wasm_handle_") { s.parse().ok() } else { None }
     }
 }

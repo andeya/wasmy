@@ -52,9 +52,7 @@ impl WasmCaller {
     /// Call the wasm specified method.
     pub fn call<A: Message, R: Message>(&self, method: Method, data: A) -> Result<R> {
         let in_args = InArgs::try_new(method, data)?;
-        instance::with(self.0.clone(), |ins| -> Result<R> {
-            ins.handle_wasm(method, in_args)?.into()
-        })
+        instance::with(self.0.clone(), |ins| -> Result<R> { ins.handle_wasm(in_args)?.into() })
     }
     /// Carry the context to call the wasm specified method.
     pub fn ctx_call<C: Message, A: Message, R: Message>(
@@ -65,7 +63,7 @@ impl WasmCaller {
     ) -> Result<R> {
         let in_args = InArgs::try_new(method, data)?;
         instance::with(self.0.clone(), |ins| -> Result<R> {
-            ins.ctx_handle_wasm(ctx, method, in_args)?.into()
+            ins.ctx_handle_wasm(ctx, in_args)?.into()
         })
     }
     // // Execute the raw call to wasm.
