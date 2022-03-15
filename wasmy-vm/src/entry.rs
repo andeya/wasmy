@@ -75,9 +75,9 @@ impl WasmCaller {
         A: FnOnce(&Context, Box<[Val]>) -> Result<R>,
     {
         instance::with(self.0.clone(), |ins| -> Result<R> {
-            let ctx = &mut ins.mut_context();
-            let args = do_args(ctx)?;
+            let args = do_args(&mut ins.mut_context())?;
             let rets = ins.raw_call_wasm(sign_name, &args)?;
+            let ctx = &mut ins.mut_context();
             let rets = do_rets(ctx, rets)?;
             ctx.reverted();
             Ok(rets)
