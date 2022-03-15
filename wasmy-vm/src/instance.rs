@@ -377,18 +377,19 @@ impl Instance {
                 Ok(r) => return Ok(r),
                 Err(e) => {
                     let estr = format!("{:?}", e);
+                    if !estr.contains("OOM") {
+                        return CodeMsg::from(e).into_result();
+                    }
                     eprintln!("call {} error: {}", sign_name, estr);
-                    if estr.contains("OOM") {
-                        match self.get_memory().grow(1) {
-                            Ok(p) => {
-                                println!("memory grow, previous memory size: {:?}", p);
-                            }
-                            Err(e) => {
-                                return CodeMsg::result(
-                                    CODE_MEM,
-                                    format!("failed to memory grow: {:?}", e),
-                                );
-                            }
+                    match self.get_memory().grow(1) {
+                        Ok(p) => {
+                            println!("memory grow, previous memory size: {:?}", p);
+                        }
+                        Err(e) => {
+                            return CodeMsg::result(
+                                CODE_MEM,
+                                format!("failed to memory grow: {:?}", e),
+                            );
                         }
                     }
                 }
