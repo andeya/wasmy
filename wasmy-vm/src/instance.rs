@@ -369,7 +369,7 @@ impl Instance {
     pub fn mut_context(&self) -> RefMut<'_, Context> {
         self.context.borrow_mut()
     }
-    pub fn raw_call_wasm(&self, sign_name: &str, args: &[Val]) -> Result<Box<[Val]>> {
+    pub(crate) fn raw_call_wasm(&self, sign_name: &str, args: &[Val]) -> Result<Box<[Val]>> {
         let f = self.exports().get_function(sign_name).map_err(|e| CodeMsg::new(CODE_NONE, e))?;
         loop {
             let rets = f.call(&args);
