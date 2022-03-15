@@ -47,11 +47,15 @@ where
     #[cfg(not(feature = "llvm"))]
     {
         compiler_config = wasmer_compiler_cranelift::Cranelift::default();
+        #[cfg(debug_assertions)]
+        println!("======== wasmy cranelift feature ========")
     }
 
     #[cfg(feature = "llvm")]
     {
         compiler_config = wasmer_compiler_llvm::LLVM::default();
+        #[cfg(debug_assertions)]
+        println!("======== wasmy llvm feature ========")
     }
 
     let store: Store = Store::new(&Universal::new(compiler_config).engine());
