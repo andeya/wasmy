@@ -215,6 +215,6 @@ impl From<wasmer_wasi::WasiError> for CodeMsg {
 #[cfg(not(target_family = "wasm"))]
 impl From<wasmer::RuntimeError> for CodeMsg {
     fn from(v: wasmer::RuntimeError) -> Self {
-        CodeMsg::new(CODE_RUNTIME, v)
+        CodeMsg::new(CODE_RUNTIME, format!("{:?}", v))
     }
 }
