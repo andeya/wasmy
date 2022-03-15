@@ -1,6 +1,6 @@
 [package]
 name = "wasmy-vm"
-version = "0.5.5"
+version = "0.5.6"
 edition = "2021"
 resolver = "2"
 authors = ["henrylee2cn <henrylee2cn@gmail.com>"]
@@ -14,8 +14,8 @@ readme = "../README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wasmy-macros = "0.5.5"
-wasmy-abi = "0.5.5"
+wasmy-macros = "0.5.6"
+wasmy-abi = "0.5.6"
 inventory = "0.2.2"
 wasmer = "2.0.0"
 wasmer-engine-universal = "2.0.0"
