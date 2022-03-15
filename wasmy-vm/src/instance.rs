@@ -346,17 +346,17 @@ impl Instance {
         self.inner_handle_wasm(Some(ctx_value), method, in_args)
     }
     #[inline]
-    fn inner_handle_wasm<C: Message, S: MethodSymbol>(
+    fn inner_handle_wasm<C: Message>(
         &self,
         ctx_value: Option<C>,
-        method: S,
+        method: Method,
         in_args: InArgs,
     ) -> Result<OutRets> {
         self.check_loaded()?;
         #[cfg(debug_assertions)]
         println!("method={}, data={:?}", in_args.get_method(), in_args.get_data());
         let (ctx_size, args_size) = self.context.borrow_mut().set_args(ctx_value.as_ref(), in_args);
-        let sign_name = method.to_method_symbol();
+        let sign_name = WasmHandlerApi::method_to_symbol(method);
         self.raw_call_wasm(
             sign_name.as_str(),
             &[Val::I32(ctx_size as i32), Val::I32(args_size as i32)],

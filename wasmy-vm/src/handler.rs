@@ -96,34 +96,17 @@ fn handle(ctx_ptr: usize, args: InArgs) -> OutRets {
     }
 }
 
-pub trait MethodSymbol {
-    fn from_method_symbol(symbol: &str) -> Option<Self>
-    where
-        Self: Sized;
-    fn to_method_symbol(&self) -> String;
-}
-
-impl MethodSymbol for WasmMethod {
-    fn from_method_symbol(symbol: &str) -> Option<Self> {
-        if let Some(s) = symbol.strip_prefix("_wasmy_wasm_handle_") { s.parse().ok() } else { None }
-    }
-    fn to_method_symbol(&self) -> String {
-        format!("_wasmy_wasm_handle_{}", self)
-    }
-}
-
 pub(crate) struct WasmHandlerApi();
 
 impl WasmHandlerApi {
-    pub(crate) const fn onload_symbol() -> &'static str {
+    pub const fn onload_symbol() -> &'static str {
         "_wasmy_wasm_onload"
     }
-    #[allow(dead_code)]
-    pub(crate) fn method_to_symbol(method: WasmMethod) -> String {
-        method.to_method_symbol()
+    pub fn method_to_symbol(method: WasmMethod) -> String {
+        format!("_wasmy_wasm_handle_{}", method)
     }
-    pub(crate) fn symbol_to_method(symbol: &str) -> Option<WasmMethod> {
-        WasmMethod::from_method_symbol(symbol)
+    pub fn symbol_to_method(symbol: &str) -> Option<WasmMethod> {
+        if let Some(s) = symbol.strip_prefix("_wasmy_wasm_handle_") { s.parse().ok() } else { None }
     }
 }
 
