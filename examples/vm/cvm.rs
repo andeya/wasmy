@@ -23,7 +23,7 @@ fn main() {
                 let mut builder: WasiStateBuilder = WasiState::new(env.wasm_uri());
                 let mut import_object = builder
                     .arg("-v true")
-                    .env("AUTHOR", "henrylee2cn")
+                    .env("AUTHOR", "andeya")
                     .finalize()?
                     .import_object(module)?;
                 import_object.register("env", import_namespace!({
