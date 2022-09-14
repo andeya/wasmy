@@ -19,19 +19,18 @@ fn main() {
                     println!("export function: {:?}", x);
                 }
                 Ok(())
-            }), Some(|module: &Module, env: &InstanceEnv| -> Result<ImportObject>{
-                let mut builder: WasiStateBuilder = WasiState::new(env.wasm_uri());
-                let mut import_object = builder
+            }), Some(|builder: &mut WasiStateBuilder, store: &mut Store, module: &mut Module, env: &FunctionEnv| -> Result<(WasiFunctionEnv, Imports)>{
+                let wasi = builder
                     .arg("-v true")
                     .env("AUTHOR", "andeya")
-                    .finalize()?
-                    .import_object(module)?;
-                import_object.register("env", import_namespace!({
-                    "custom_a" => Function::new_native_with_env(module.store(), env.clone(), |env: &InstanceEnv, a: i32| {
-                        #[cfg(debug_assertions)] println!("[VM:{:?}]custom_a: wasm_uri={}, a={}", env.thread_id(), env.wasm_uri(), a);
+                    .finalize(store)?;
+                let mut imports = wasi.import_object(store, module)?;
+                imports.register_namespace("env", import_namespace!({
+                    "custom_a" => Function::new_typed_with_env(store, env, |env: FunctionEnvMut, a: i32| {
+                        #[cfg(debug_assertions)] println!("[VM:{:?}]custom_a: wasm_uri={}, a={}", env.data().thread_id(), env.data().wasm_uri(), a);
                     }),
                 }));
-                Ok(import_object)
+                Ok((wasi, imports))
             })).unwrap()
         },
         |index: usize, wasm_caller: WasmCaller| {

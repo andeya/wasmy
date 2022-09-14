@@ -1,12 +1,14 @@
 use std::{
+    collections::HashMap,
     fmt::{Display, Formatter},
     ops::Deref,
     path::PathBuf,
+    sync::{RwLock, RwLockReadGuard},
 };
 
-use wasmer::WasmerEnv;
+use lazy_static::lazy_static;
 
-#[derive(Clone, WasmerEnv, Hash, Eq, PartialEq, Debug)]
+#[derive(Clone, Hash, Eq, PartialEq, Debug)]
 pub struct WasmUri(String);
 
 impl Deref for WasmUri {
@@ -55,4 +57,18 @@ impl<B: AsRef<[u8]>> WasmFile<B> for (&str, B) {
     fn into_parts(self) -> anyhow::Result<(WasmUri, B)> {
         Ok((WasmUri(self.0.to_string()), self.1))
     }
+}
+
+lazy_static! {
+    static ref GLOBAL_FILES: RwLock<HashMap<WasmUri, Vec<u8>>> = RwLock::new(HashMap::new());
+}
+
+pub fn register_file<F: WasmFile<B>, B: AsRef<[u8]>>(file: F) -> anyhow::Result<WasmUri> {
+    let (uri, bytes) = file.into_parts()?;
+    GLOBAL_FILES.write().unwrap().insert(uri.clone(), bytes.as_ref().to_vec());
+    Ok(uri)
+}
+
+pub fn get_files() -> RwLockReadGuard<'static, HashMap<WasmUri, Vec<u8>>> {
+    GLOBAL_FILES.read().unwrap()
 }

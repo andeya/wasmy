@@ -19,8 +19,8 @@ protobuf = { version = "2", features = ["with-bytes"] }
 anyhow = "1"
 
 [target.'cfg(not(target_family="wasm"))'.dependencies]
-wasmer = "2.0.0"
-wasmer-wasi = "2.0.0"
+wasmer = "3.0.0-beta"
+wasmer-wasi = "3.0.0-beta"
 
 [build-dependencies]
 protoc-rust = "2.0"

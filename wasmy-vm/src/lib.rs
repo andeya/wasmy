@@ -3,16 +3,16 @@
 pub use entry::*;
 pub use handler::*;
 pub use instance::*;
-pub use modules::*;
 pub use wasm_file::*;
-pub use wasmer::{import_namespace, Exports, Function, ImportObject, Module, Val};
-pub use wasmer_wasi::{WasiState, WasiStateBuilder};
+pub use wasmer::{import_namespace, Exports, Function, Imports, Module, Store};
+pub use wasmer_wasi::{WasiFunctionEnv, WasiStateBuilder};
 pub use wasmy_abi::*;
 
+mod context;
 mod entry;
 mod handler;
 mod instance;
-mod modules;
+mod instance_env;
 mod wasm_file;
 
 #[cfg(test)]
