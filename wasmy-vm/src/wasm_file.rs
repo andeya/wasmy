@@ -7,6 +7,7 @@ use std::{
 };
 
 use lazy_static::lazy_static;
+use wasmer::{CompileError, WasmError};
 
 #[derive(Clone, Hash, Eq, PartialEq, Debug)]
 pub struct WasmUri(String);
@@ -65,7 +66,10 @@ lazy_static! {
 
 pub fn register_file<F: WasmFile<B>, B: AsRef<[u8]>>(file: F) -> anyhow::Result<WasmUri> {
     let (uri, bytes) = file.into_parts()?;
-    GLOBAL_FILES.write().unwrap().insert(uri.clone(), bytes.as_ref().to_vec());
+    let bytes = wat::parse_bytes(bytes.as_ref()).map_err(|e| {
+        CompileError::Wasm(WasmError::Generic(format!("Error when converting wat: {}", e)))
+    })?;
+    GLOBAL_FILES.write().unwrap().insert(uri.clone(), bytes.to_vec());
     Ok(uri)
 }
 

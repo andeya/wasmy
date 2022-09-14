@@ -66,9 +66,9 @@ impl Instance {
         check_module: Option<FnCheckModule>,
         build_imports: Option<FnBuildImports>,
     ) -> Result<WasmUri>
-        where
-            B: AsRef<[u8]>,
-            W: WasmFile<B>,
+    where
+        B: AsRef<[u8]>,
+        W: WasmFile<B>,
     {
         // collect and register handlers once
         VmHandlerApi::collect_and_register_once();
@@ -97,7 +97,6 @@ impl Instance {
         println!("compiling module, wasm_uri={}...", wasm_uri);
 
         let engine;
-
         #[cfg(not(feature = "llvm"))]
         {
             engine = wasmer_compiler_cranelift::Cranelift::default();
@@ -106,7 +105,6 @@ impl Instance {
                 println!("======== wasmy cranelift feature ========")
             }
         }
-
         #[cfg(feature = "llvm")]
         {
             engine = wasmer_compiler_llvm::LLVM::default();
@@ -117,48 +115,50 @@ impl Instance {
         }
 
         let mut store: Store = Store::new(engine);
-        let mut module = Module::new(&store, wasm_bytes)?;
+        let mut module = Module::from_binary(&store, wasm_bytes)?;
         module.set_name(wasm_uri.as_str());
         if let Some(cf) = check_module {
             cf(&module)?;
         };
-        for function in module.exports().functions() {
-            let name = function.name();
-            if name == WasmHandlerApi::onload_symbol() {
-                let ty = function.ty();
-                if ty.params().len() > 0 || ty.results().len() > 0 {
-                    return CodeMsg::result(
-                        CODE_EXPORTS,
-                        format!(
-                            "Incompatible Export Type: fn {}(){{}}",
-                            WasmHandlerApi::onload_symbol()
-                        ),
-                    );
-                }
-                continue;
-            }
-            WasmHandlerApi::symbol_to_method(name).map_or_else(
-                || {
-                    #[cfg(debug_assertions)]
-                    {
-                        println!("module exports non-wasmy function: {:?}", function);
-                        Ok(())
-                    }
-                },
-                |_method| {
+        if first {
+            for function in module.exports().functions() {
+                let name = function.name();
+                if name == WasmHandlerApi::onload_symbol() {
                     let ty = function.ty();
-                    if ty.results().len() == 0 && ty.params().eq(&[Type::I32, Type::I32]) {
-                        #[cfg(debug_assertions)]
-                        println!("module exports wasmy function: {:?}", function);
-                        Ok(())
-                    } else {
+                    if ty.params().len() > 0 || ty.results().len() > 0 {
                         return CodeMsg::result(
                             CODE_EXPORTS,
-                            format!("Incompatible Export Type: {:?}", function),
+                            format!(
+                                "Incompatible Export Type: fn {}(){{}}",
+                                WasmHandlerApi::onload_symbol()
+                            ),
                         );
                     }
-                },
-            )?;
+                    continue;
+                }
+                WasmHandlerApi::symbol_to_method(name).map_or_else(
+                    || {
+                        #[cfg(debug_assertions)]
+                        {
+                            println!("module exports non-wasmy function: {:?}", function);
+                            Ok(())
+                        }
+                    },
+                    |_method| {
+                        let ty = function.ty();
+                        if ty.results().len() == 0 && ty.params().eq(&[Type::I32, Type::I32]) {
+                            #[cfg(debug_assertions)]
+                            println!("module exports wasmy function: {:?}", function);
+                            Ok(())
+                        } else {
+                            return CodeMsg::result(
+                                CODE_EXPORTS,
+                                format!("Incompatible Export Type: {:?}", function),
+                            );
+                        }
+                    },
+                )?;
+            }
         }
         let key = LocalInstanceKey::from(wasm_uri);
         let ins_env = FunctionEnv::new(&mut store, InstanceEnv::default());
@@ -184,17 +184,15 @@ impl Instance {
         let memory = instance.instance.exports.get_memory("memory").unwrap();
         wasi_env.data_mut(&mut instance.store).set_memory(memory.clone());
 
-
         // initialize
         instance.into_init(ins_env)?;
-
 
         return Ok(());
     }
 
     pub(crate) fn with<F, R>(wasm_uri: WasmUri, callback: F) -> Result<R>
-        where
-            F: FnOnce(&mut Instance) -> Result<R>,
+    where
+        F: FnOnce(&mut Instance) -> Result<R>,
     {
         let key = LocalInstanceKey::from(wasm_uri.clone());
         {

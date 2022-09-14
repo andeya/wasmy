@@ -18,6 +18,7 @@ wasmy-macros = "0.5.6"
 wasmy-abi = "0.5.6"
 inventory = "0.3.1"
 wasmer = "3.0.0-beta"
+wat = "1.0.36"
 wasmer-wasi = "3.0.0-beta"
 wasmer-compiler-cranelift = { version = "3.0.0-beta", optional = true }
 wasmer-compiler-llvm = { version = "3.0.0-beta", optional = true }
